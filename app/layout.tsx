@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Dancing_Script, Inter, Merriweather } from "next/font/google";
 import "./globals.css";
 
@@ -22,6 +22,11 @@ const handwrittenFont = Dancing_Script({
 export const metadata: Metadata = {
   title: "Dear Tomorrow",
   description: "Leave something for your future self.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

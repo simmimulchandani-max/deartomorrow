@@ -15,6 +15,7 @@
 
 html {
   background: var(--background);
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -50,8 +51,16 @@ button {
 input,
 textarea,
 select,
-label {
+label,
+button {
   font-family: var(--font-body), sans-serif;
+}
+
+input,
+textarea,
+button,
+select {
+  font-size: 16px;
 }
 
 .text-elevated {
