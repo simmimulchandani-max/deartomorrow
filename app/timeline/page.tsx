@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import UnlockModal from "@/components/components/UnlockModal";
+import UnlockModal from "@/components/UnlockModal";
 
 const STORAGE_KEY = "dear-tomorrow-memories";
 
