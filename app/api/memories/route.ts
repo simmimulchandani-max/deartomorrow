@@ -1,74 +1,39 @@
-import {
-  addMemory,
-  getCapsuleById,
-  getMemoriesByCapsuleId,
-} from "@/lib/store";
+import { NextRequest, NextResponse } from 'next/server';
 
-function todayInLocalDate() {
-  const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 10);
+// Temporary in-memory store (replace with a DB later)
+let memories: Array<{
+  title: string;
+  content: string;
+  date?: string;
+  tags?: string;
+  createdAt: string;
+}> = [];
+
+export async function POST(req: NextRequest) {
+  try {
+    const data = await req.json();
+
+    // Basic validation (ensure required fields exist)
+    if (!data.title || !data.content) {
+      return NextResponse.json({ error: 'Title and content are required' }, { status: 400 });
+    }
+
+    // Push to in-memory store
+    memories.push({
+      title: data.title,
+      content: data.content,
+      date: data.date || '',
+      tags: data.tags || '',
+      createdAt: new Date().toISOString(),
+    });
+
+    return NextResponse.json({ success: true, memory: data });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: 'Failed to create memory' }, { status: 500 });
+  }
 }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const capsuleId = searchParams.get("capsuleId");
-
-  if (!capsuleId) {
-    return Response.json(
-      { error: "capsuleId is required." },
-      { status: 400 }
-    );
-  }
-
-  const memories = await getMemoriesByCapsuleId(capsuleId);
-
-  return Response.json({
-    memories,
-    count: memories.length,
-  });
-}
-
-export async function POST(request: Request) {
-  const body = (await request.json()) as {
-    capsuleId?: string;
-    message?: string;
-    name?: string;
-  };
-
-  const capsuleId = body.capsuleId?.trim() ?? "";
-  const message = body.message?.trim() ?? "";
-  const name = body.name?.trim() ?? "";
-
-  if (!capsuleId) {
-    return Response.json(
-      { error: "capsuleId is required." },
-      { status: 400 }
-    );
-  }
-
-  if (!message) {
-    return Response.json({ error: "Message is required." }, { status: 400 });
-  }
-
-  const capsule = await getCapsuleById(capsuleId);
-
-  if (!capsule) {
-    return Response.json({ error: "Capsule not found." }, { status: 404 });
-  }
-
-  if (todayInLocalDate() >= capsule.unlockDate) {
-    return Response.json(
-      { error: "This capsule is already unlocked." },
-      { status: 400 }
-    );
-  }
-
-  const memory = await addMemory({
-    capsuleId,
-    message,
-    name,
-  });
-
-  return Response.json({ memory }, { status: 201 });
+export async function GET() {
+  return NextResponse.json(memories);
 }
