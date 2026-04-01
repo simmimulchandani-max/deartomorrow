@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { use } from "react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import MemoryCard from "@/components/components/MemoryCard";
+import UnlockCelebration from "@/components/components/UnlockCelebration";
 
 type Capsule = {
   id: string;
@@ -53,26 +55,15 @@ function formatTimestamp(dateString: string) {
 
 function rotationClass(index: number) {
   const rotations = [
-    "-rotate-2",
-    "rotate-1",
-    "-rotate-1",
-    "rotate-2",
-    "-rotate-3",
-    "rotate-3",
+    "rotate-[-2deg]",
+    "rotate-[1.5deg]",
+    "rotate-[-1deg]",
+    "rotate-[2.5deg]",
+    "rotate-[-3deg]",
+    "rotate-[3deg]",
   ];
 
   return rotations[index % rotations.length];
-}
-
-function cardAccent(index: number) {
-  const accents = [
-    "bg-[#fffaf2]",
-    "bg-[#fdfdfb]",
-    "bg-[#fff9f6]",
-    "bg-[#fbfbff]",
-  ];
-
-  return accents[index % accents.length];
 }
 
 export default function CapsulePage(props: {
@@ -364,6 +355,8 @@ export default function CapsulePage(props: {
           </section>
         ) : (
           <section className="space-y-6">
+            <UnlockCelebration />
+
             <article className="rounded-[2rem] border border-emerald-100/80 bg-emerald-50/60 p-8 shadow-[0_20px_80px_rgba(88,110,124,0.12)] backdrop-blur-md">
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-700/80">
                 Unlocked
@@ -383,24 +376,15 @@ export default function CapsulePage(props: {
                 </p>
               </div>
             ) : (
-              <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-x-8 gap-y-12 md:grid-cols-2 xl:grid-cols-3">
                 {memories.map((memory, index) => (
-                  <article
+                  <MemoryCard
                     key={`${memory.createdAt}-${index}`}
-                    className={`border border-stone-200/80 p-5 pb-10 shadow-[0_20px_50px_rgba(0,0,0,0.12)] ${rotationClass(index)} ${cardAccent(index)}`}
-                  >
-                    <div className="border-b border-dashed border-stone-200 pb-4">
-                      <p className="font-[family:var(--font-handwritten)] text-3xl text-slate-700">
-                        {memory.name || "Anonymous"}
-                      </p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.18em] text-slate-500">
-                        {formatTimestamp(memory.createdAt)}
-                      </p>
-                    </div>
-                    <p className="mt-5 whitespace-pre-wrap text-base leading-8 text-slate-700">
-                      {memory.message}
-                    </p>
-                  </article>
+                    message={memory.message}
+                    name={memory.name}
+                    createdAtLabel={formatTimestamp(memory.createdAt)}
+                    tiltClassName={rotationClass(index)}
+                  />
                 ))}
               </div>
             )}
