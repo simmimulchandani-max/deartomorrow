@@ -15,9 +15,23 @@ export type Memory = {
   createdAt: string;
 };
 
+export type TimelineMemory = {
+  id: string;
+  title: string;
+  message: string;
+  unlockDate: string;
+  media: Array<{
+    name: string;
+    type: string;
+    size: number;
+  }>;
+  createdAt: string;
+};
+
 type StoreData = {
   capsules: Capsule[];
   memories: Memory[];
+  timelineMemories: TimelineMemory[];
 };
 
 const storePath = path.join(process.cwd(), "data", "store.json");
@@ -25,6 +39,7 @@ const storePath = path.join(process.cwd(), "data", "store.json");
 const initialStore: StoreData = {
   capsules: [],
   memories: [],
+  timelineMemories: [],
 };
 
 let writeQueue = Promise.resolve();
@@ -50,6 +65,9 @@ async function readStore(): Promise<StoreData> {
     return {
       capsules: Array.isArray(parsed.capsules) ? parsed.capsules : [],
       memories: Array.isArray(parsed.memories) ? parsed.memories : [],
+      timelineMemories: Array.isArray(parsed.timelineMemories)
+        ? parsed.timelineMemories
+        : [],
     };
   } catch {
     return initialStore;
@@ -124,4 +142,24 @@ export async function getMemoriesByCapsuleId(capsuleId: string) {
   return store.memories
     .filter((memory) => memory.capsuleId === capsuleId)
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+}
+
+export async function createTimelineMemory(
+  input: Omit<TimelineMemory, "createdAt">
+) {
+  const memory: TimelineMemory = {
+    ...input,
+    createdAt: new Date().toISOString(),
+  };
+
+  await updateStore((store) => {
+    store.timelineMemories.unshift(memory);
+  });
+
+  return memory;
+}
+
+export async function listTimelineMemories() {
+  const store = await readStore();
+  return [...store.timelineMemories];
 }

@@ -80,21 +80,23 @@ function createConfettiPieces() {
 }
 
 function getMemoryMedia(memory) {
-  const src =
-    memory?.imageDataUrl ||
-    memory?.image ||
-    memory?.imageUrl ||
-    memory?.media ||
-    memory?.mediaUrl ||
-    memory?.video ||
-    memory?.videoUrl ||
-    "";
+  const sources = [
+    ...(Array.isArray(memory?.mediaUrls) ? memory.mediaUrls : []),
+    memory?.imageDataUrl,
+    memory?.image,
+    memory?.imageUrl,
+    memory?.media,
+    memory?.mediaUrl,
+    memory?.video,
+    memory?.videoUrl,
+  ].filter(Boolean);
 
-  const isVideo =
-    src.startsWith("data:video/") ||
-    /\.(mp4|webm|ogg|mov)$/i.test(src);
-
-  return { src, isVideo };
+  return sources.filter((src, index) => sources.indexOf(src) === index).map((src) => ({
+    src,
+    isVideo:
+      src.startsWith("data:video/") ||
+      /\.(mp4|webm|ogg|mov)$/i.test(src),
+  }));
 }
 
 function IconButton({ href, label, children }) {
@@ -123,7 +125,7 @@ export default function UnlockModal({
   const [showConfetti, setShowConfetti] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
-  const { src: mediaSrc, isVideo } = getMemoryMedia(memory);
+  const mediaItems = getMemoryMedia(memory);
   const confettiPieces = createConfettiPieces();
 
   function handleClose() {
@@ -327,27 +329,50 @@ export default function UnlockModal({
         >
           <div className="grid min-h-[min(92vh,58rem)] gap-0 lg:grid-cols-[1.04fr_0.96fr]">
             <div className="relative min-h-[18rem] overflow-hidden rounded-t-[2.5rem] lg:rounded-l-[2.5rem] lg:rounded-tr-none">
-              {mediaSrc ? (
-                isVideo ? (
-                  <video
-                    src={mediaSrc}
-                    controls
-                    className={`h-full w-full object-cover transition duration-[1400ms] ease-out ${
-                      isVisible ? "scale-100 opacity-100" : "scale-105 opacity-0"
-                    }`}
-                  />
-                ) : (
-                  <Image
-                    src={mediaSrc}
-                    alt={memory.title}
-                    width={1400}
-                    height={1400}
-                    unoptimized
-                    className={`h-full w-full object-cover transition duration-[1400ms] ease-out ${
-                      isVisible ? "scale-100 opacity-100" : "scale-105 opacity-0"
-                    }`}
-                  />
-                )
+              {mediaItems.length > 0 ? (
+                <div
+                  className={`grid h-full min-h-[28rem] w-full gap-3 bg-[linear-gradient(180deg,_rgba(252,248,239,0.7)_0%,_rgba(239,229,207,0.7)_46%,_rgba(211,232,244,0.82)_100%)] p-3 transition duration-[1400ms] ease-out ${
+                    isVisible ? "scale-100 opacity-100" : "scale-105 opacity-0"
+                  } ${
+                    mediaItems.length === 1
+                      ? "grid-cols-1"
+                      : mediaItems.length === 2
+                        ? "grid-cols-1 sm:grid-cols-2"
+                        : "grid-cols-2"
+                  }`}
+                >
+                  {mediaItems.map((item, index) => (
+                    <div
+                      key={`${item.src}-${index}`}
+                      className={`relative overflow-hidden rounded-[1.75rem] bg-white/55 ${
+                        mediaItems.length === 3 && index === 0
+                          ? "col-span-2 min-h-[16rem]"
+                          : "min-h-[12rem]"
+                      } ${
+                        mediaItems.length >= 4 && index === 0
+                          ? "col-span-2 row-span-2 min-h-[20rem]"
+                          : ""
+                      }`}
+                    >
+                      {item.isVideo ? (
+                        <video
+                          src={item.src}
+                          controls
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Image
+                          src={item.src}
+                          alt={`${memory.title} media ${index + 1}`}
+                          width={1400}
+                          height={1400}
+                          unoptimized
+                          className="h-full w-full object-cover"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div
                   className={`flex h-full min-h-[18rem] w-full items-end bg-[linear-gradient(180deg,_rgba(252,248,239,0.88)_0%,_rgba(239,229,207,0.88)_46%,_rgba(211,232,244,0.92)_100%)] p-8 transition duration-[1400ms] ease-out sm:p-10 ${

@@ -1,48 +1,206 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { getSupabaseClient } from '@/lib/supabaseClient';
+
+const STORAGE_KEY = 'dear-tomorrow-memories';
+const SUPABASE_STORAGE_BUCKET = 'dear tomorrow';
+const NAV_BUTTON_CLASS =
+  'px-4 py-2 rounded-full bg-[#f7c7b6] border border-[#e7b6a4] shadow text-[#4a3c31] hover:bg-[#f4bba8]';
 
 export default function CreateMemoryPage() {
+  const router = useRouter();
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [unlockDate, setUnlockDate] = useState('');
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      // If these values change in .env.local, restart `next dev` so Next.js reloads them.
+      console.log('Supabase env check:', {
+        hasUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+        hasAnonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? null,
+      });
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const formData = new FormData();
-      formData.append('title', title);
-      formData.append('message', message);
-      formData.append('unlockDate', unlockDate);
-      if (fileInputRef.current?.files) {
-        Array.from(fileInputRef.current.files).forEach((file) => {
-          formData.append('media', file);
-        });
+      const supabase = getSupabaseClient();
+
+      const selectedFiles = fileInputRef.current?.files
+        ? Array.from(fileInputRef.current.files)
+        : [];
+
+      const payload = {
+        title: title.trim(),
+        message: message.trim(),
+        unlockDate: unlockDate.trim(),
+        media: selectedFiles.map((file) => ({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        })),
+      };
+
+      if (!payload.title || !payload.message || !payload.unlockDate) {
+        throw new Error('Title, message, and unlock date are required');
       }
 
-      const res = await fetch('/api/memories', { method: 'POST', body: formData });
-      if (!res.ok) throw new Error('Failed to create memory');
+      const uploadedMedia = await Promise.all(
+        selectedFiles.map(async (file) => {
+          const fileExt = file.name.split('.').pop() ?? 'file';
+          const fileName = `${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
+
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from(SUPABASE_STORAGE_BUCKET)
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              contentType: file.type,
+            });
+
+          if (uploadError) throw new Error(uploadError.message);
+
+          const { data: publicUrlData } = supabase.storage
+            .from(SUPABASE_STORAGE_BUCKET)
+            .getPublicUrl(uploadData.path);
+
+          if (!publicUrlData.publicUrl) {
+            throw new Error('Failed to generate a public URL for the uploaded media');
+          }
+
+          return {
+            path: uploadData.path,
+            publicUrl: publicUrlData.publicUrl,
+            name: file.name,
+            type: file.type,
+          };
+        })
+      );
+
+      const mediaUrl = uploadedMedia[0]?.publicUrl ?? null;
+
+      const insertPayload = {
+        title: payload.title,
+        message: payload.message,
+        unlock_date: payload.unlockDate,
+        media_url: mediaUrl,
+      };
+
+      const { data: insertedMemory, error: insertError } = await supabase
+        .from('memories')
+        .insert(insertPayload)
+        .select()
+        .single();
+
+      if (insertError) {
+        if (uploadedMedia.length > 0) {
+          const uploadedPaths = uploadedMedia.map((item) => item.path);
+          await supabase.storage.from(SUPABASE_STORAGE_BUCKET).remove(uploadedPaths);
+        }
+        throw new Error(insertError.message);
+      }
+
+      const existingMemories = window.localStorage.getItem(STORAGE_KEY);
+      const parsedMemories = existingMemories ? JSON.parse(existingMemories) : [];
+      const createdAt =
+        typeof insertedMemory?.created_at === 'string'
+          ? insertedMemory.created_at
+          : new Date().toISOString();
+
+      const memoryRecord = {
+        id:
+          typeof insertedMemory?.id === 'string'
+            ? insertedMemory.id
+            : crypto.randomUUID(),
+        title: payload.title,
+        message: payload.message,
+        unlockDate: payload.unlockDate,
+        imageName: uploadedMedia[0]?.name ?? null,
+        imageDataUrl: uploadedMedia[0]?.type?.startsWith('image/')
+          ? mediaUrl
+          : null,
+        mediaUrl,
+        mediaUrls: uploadedMedia.map((item) => item.publicUrl),
+        createdAt,
+      };
+
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify([memoryRecord, ...parsedMemories])
+      );
 
       setTitle('');
       setMessage('');
       setUnlockDate('');
       if (fileInputRef.current) fileInputRef.current.value = '';
-      alert('Memory created!');
-    } catch (err) {
-      console.error(err);
-      alert('Error creating memory');
+      setSelectedFileNames([]);
+      setSubmitted(true);
+    } catch (error) {
+      console.error('Create memory error:', error);
+      const message =
+        error instanceof Error ? error.message : 'Error creating memory';
+      alert(message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFileClick = () => {
-    fileInputRef.current?.click();
+  const handleFileClick = () => fileInputRef.current?.click();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    setSelectedFileNames(files.map((file) => file.name));
   };
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-[#F5F0E6] flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-3xl bg-gray-100 rounded-3xl p-10 space-y-6 shadow text-center">
+          <span className="text-sm font-semibold text-gray-500">CREATE MEMORY</span>
+          <h1 className="text-4xl font-bold leading-tight">Memory Submitted!</h1>
+          <p className="text-gray-600">
+            Choose where you want to go next.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <button
+              type="button"
+              onClick={() => router.push('/')}
+              className={NAV_BUTTON_CLASS}
+            >
+              Home
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/timeline')}
+              className={NAV_BUTTON_CLASS}
+            >
+              Timeline
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSubmitted(false);
+                router.push('/create');
+              }}
+              className={NAV_BUTTON_CLASS}
+            >
+              Create Memory
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F5F0E6] flex flex-col items-center p-6">
@@ -58,10 +216,18 @@ export default function CreateMemoryPage() {
 
         {/* Right-side Pill Buttons */}
         <div className="flex space-x-3">
-          <button className="px-4 py-2 rounded-full bg-white border border-gray-300 shadow text-gray-700 hover:bg-gray-100">
+          <button
+            type="button"
+            onClick={() => router.push('/')}
+            className={NAV_BUTTON_CLASS}
+          >
             Home
           </button>
-          <button className="px-4 py-2 rounded-full bg-white border border-gray-300 shadow text-gray-700 hover:bg-gray-100">
+          <button
+            type="button"
+            onClick={() => router.push('/timeline')}
+            className={NAV_BUTTON_CLASS}
+          >
             Timeline
           </button>
         </div>
@@ -70,7 +236,6 @@ export default function CreateMemoryPage() {
       {/* Form Card */}
       <div className="w-full max-w-3xl bg-gray-100 rounded-3xl p-10 space-y-6 shadow">
         <form onSubmit={handleSubmit} className="space-y-6">
-
           {/* TITLE */}
           <div>
             <label className="block mb-2 font-medium text-gray-700">TITLE</label>
@@ -105,9 +270,22 @@ export default function CreateMemoryPage() {
                 multiple
                 accept="image/*,video/*"
                 ref={fileInputRef}
+                onChange={handleFileChange}
                 className="hidden"
               />
             </div>
+            {selectedFileNames.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {selectedFileNames.map((fileName) => (
+                  <p
+                    key={fileName}
+                    className="text-sm text-gray-600 break-all"
+                  >
+                    {fileName}
+                  </p>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           {/* UNLOCK DATE */}

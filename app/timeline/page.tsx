@@ -1,7 +1,7 @@
 'use client';
 
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import UnlockModal from "@/components/UnlockModal";
 
@@ -14,8 +14,13 @@ type MemoryRecord = {
   unlockDate: string;
   imageName: string | null;
   imageDataUrl: string | null;
+  mediaUrl?: string | null;
+  mediaUrls?: string[];
   createdAt: string;
 };
+
+const NAV_BUTTON_CLASS =
+  "px-4 py-2 rounded-full bg-[#f7c7b6] border border-[#e7b6a4] shadow text-[#4a3c31] hover:bg-[#f4bba8]";
 
 function isUnlocked(unlockDate: string) {
   const today = new Date().toISOString().split("T")[0];
@@ -55,6 +60,7 @@ function buildShareLinks(memory: MemoryRecord) {
 }
 
 export default function TimelinePage() {
+  const router = useRouter();
   const [memories, setMemories] = useState<MemoryRecord[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState<MemoryRecord | null>(null);
@@ -129,65 +135,58 @@ export default function TimelinePage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,_#f7f2e9_0%,_#f8f6f1_34%,_#e5eff5_78%,_#d9e9f2_100%)] px-6 py-12 sm:py-16">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[-10%] top-[-2%] h-72 w-72 rounded-full bg-white/40 blur-3xl" />
-        <div className="absolute right-[-10%] top-[18%] h-96 w-96 rounded-full bg-sky-200/30 blur-3xl" />
-        <div className="absolute bottom-[-18%] left-1/2 h-80 w-[140%] -translate-x-1/2 rounded-[100%] bg-[radial-gradient(ellipse_at_center,_rgba(245,233,210,0.95)_0%,_rgba(236,221,194,0.86)_42%,_rgba(233,216,188,0)_75%)]" />
-      </div>
-
-      <section className="relative mx-auto flex w-full max-w-6xl flex-col gap-10">
-        <header className="rounded-[2.25rem] border border-white/60 bg-white/55 px-8 py-10 shadow-[0_30px_120px_rgba(88,110,124,0.16)] backdrop-blur-md sm:px-12 sm:py-12">
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.38em] text-sky-800/55">
-                Timeline
-              </p>
-              <h1 className="mt-5 font-[family:var(--font-display)] text-5xl leading-[0.95] text-slate-800 sm:text-6xl">
+    <main className="min-h-screen bg-[#F5F0E6] px-6 py-12 sm:py-16">
+      <section className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <header className="w-full bg-gray-100 rounded-3xl p-10 space-y-6 shadow">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-2 max-w-3xl">
+              <span className="text-sm font-semibold text-gray-500">TIMELINE</span>
+              <h1 className="text-4xl font-bold leading-tight">
                 Your future archive, unfolding in time.
               </h1>
-              <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-                Saved memories wait here until their date arrives. Unlocked
-                notes can be opened now, while future ones stay soft and out of
-                reach.
+              <p className="text-gray-600 max-w-2xl">
+                Saved memories wait here until their date arrives. Unlocked notes
+                can be opened now, while future ones stay softly out of reach.
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-4">
-              <Link
-                href="/"
-                className="inline-flex rounded-full border border-slate-300/70 bg-white/45 px-6 py-3 text-sm font-semibold tracking-[0.18em] text-slate-700 transition hover:border-sky-300 hover:bg-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => router.push("/")}
+                className={NAV_BUTTON_CLASS}
               >
-                Back Home
-              </Link>
-              <Link
-                href="/create"
-                className="inline-flex rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold tracking-[0.18em] text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/25 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
+                Home
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/create")}
+                className={NAV_BUTTON_CLASS}
               >
                 Create a Memory
-              </Link>
+              </button>
             </div>
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-[1.6rem] border border-white/50 bg-white/45 px-5 py-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-500">
+            <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4">
+              <p className="text-xs uppercase tracking-[0.24em] text-gray-500">
                 Total
               </p>
-              <p className="mt-3 text-3xl font-semibold text-slate-800">
+              <p className="mt-3 text-3xl font-semibold text-gray-800">
                 {summary.total}
               </p>
             </div>
-            <div className="rounded-[1.6rem] border border-emerald-100/80 bg-emerald-50/50 px-5 py-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-emerald-700/70">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+              <p className="text-xs uppercase tracking-[0.24em] text-emerald-700">
                 Unlocked
               </p>
               <p className="mt-3 text-3xl font-semibold text-emerald-900">
                 {summary.unlocked}
               </p>
             </div>
-            <div className="rounded-[1.6rem] border border-sky-100/80 bg-sky-50/50 px-5 py-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-sky-700/70">
+            <div className="rounded-2xl border border-sky-200 bg-sky-50 px-5 py-4">
+              <p className="text-xs uppercase tracking-[0.24em] text-sky-700">
                 Locked
               </p>
               <p className="mt-3 text-3xl font-semibold text-sky-900">
@@ -198,34 +197,35 @@ export default function TimelinePage() {
         </header>
 
         {!isLoaded ? (
-          <section className="rounded-[2.25rem] border border-white/60 bg-white/55 px-8 py-16 text-center shadow-[0_30px_120px_rgba(88,110,124,0.16)] backdrop-blur-md">
-            <p className="text-sm uppercase tracking-[0.28em] text-sky-700/60">
+          <section className="w-full bg-gray-100 rounded-3xl px-8 py-16 text-center shadow">
+            <p className="text-sm uppercase tracking-[0.28em] text-gray-500">
               Loading
             </p>
-            <p className="mt-4 text-lg leading-8 text-slate-600">
+            <p className="mt-4 text-lg leading-8 text-gray-600">
               Gathering your saved memories.
             </p>
           </section>
         ) : null}
 
         {isLoaded && memories.length === 0 ? (
-          <section className="rounded-[2.25rem] border border-white/60 bg-white/55 px-8 py-16 text-center shadow-[0_30px_120px_rgba(88,110,124,0.16)] backdrop-blur-md sm:px-12">
-            <p className="text-sm uppercase tracking-[0.28em] text-sky-700/60">
+          <section className="w-full bg-gray-100 rounded-3xl px-8 py-16 text-center shadow sm:px-12">
+            <p className="text-sm uppercase tracking-[0.28em] text-gray-500">
               No memories yet
             </p>
-            <h2 className="mt-4 font-[family:var(--font-display)] text-4xl text-slate-800 sm:text-5xl">
+            <h2 className="mt-4 text-4xl font-bold text-gray-800 sm:text-5xl">
               Nothing is waiting here just yet.
             </h2>
-            <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-gray-600 sm:text-lg">
               Create your first memory and it will appear here with its unlock
               status.
             </p>
-            <Link
-              href="/create"
-              className="mt-10 inline-flex rounded-full bg-slate-900 px-7 py-3 text-sm font-semibold tracking-[0.18em] text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/25 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
+            <button
+              type="button"
+              onClick={() => router.push("/create")}
+              className={`mt-10 ${NAV_BUTTON_CLASS}`}
             >
               Create a Memory
-            </Link>
+            </button>
           </section>
         ) : null}
 
@@ -233,21 +233,26 @@ export default function TimelinePage() {
           <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {memories.map((memory) => {
               const unlocked = isUnlocked(memory.unlockDate);
+              const previewMedia =
+                memory.imageDataUrl ||
+                memory.mediaUrls?.[0] ||
+                memory.mediaUrl ||
+                null;
 
               return (
                 <article
                   key={memory.id}
-                  className={`group relative overflow-hidden rounded-[2rem] border bg-white/60 text-left shadow-[0_20px_80px_rgba(88,110,124,0.12)] backdrop-blur-md transition ${
+                  className={`group relative overflow-hidden rounded-3xl border bg-gray-100 text-left shadow transition ${
                     unlocked
-                      ? "border-white/70 hover:-translate-y-1 hover:bg-white/78"
-                      : "border-white/50 opacity-90"
+                      ? "border-gray-200 hover:-translate-y-1"
+                      : "border-gray-200 opacity-90"
                   }`}
                 >
                   <div
                     className={`absolute inset-0 transition ${
                       unlocked
-                        ? "bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.04)_100%)]"
-                        : "bg-white/8 backdrop-blur-[6px]"
+                        ? "bg-transparent"
+                        : "bg-white/20 backdrop-blur-[2px]"
                     }`}
                   />
                   <div className={`relative p-6 ${unlocked ? "" : "blur-[2px]"}`}>
@@ -262,14 +267,14 @@ export default function TimelinePage() {
                         >
                           {unlocked ? "Unlocked" : "Locked"}
                         </span>
-                        <h2 className="mt-4 line-clamp-2 font-[family:var(--font-display)] text-3xl leading-tight text-slate-800">
+                        <h2 className="mt-4 line-clamp-2 text-3xl font-bold leading-tight text-gray-800">
                           {memory.title}
                         </h2>
                       </div>
                       <button
                         type="button"
                         onClick={() => deleteMemory(memory.id)}
-                        className="shrink-0 rounded-full border border-rose-200/80 bg-white/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-rose-700 transition hover:border-rose-300 hover:bg-rose-50 active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40"
+                        className="px-4 py-2 rounded-full bg-white border border-gray-300 shadow text-gray-700 hover:bg-gray-100"
                         aria-label={`Delete memory ${memory.title}`}
                       >
                         Delete
@@ -295,10 +300,10 @@ export default function TimelinePage() {
                           : `Memory ${memory.title} is still locked`
                       }
                     >
-                      {memory.imageDataUrl ? (
+                      {previewMedia ? (
                         <div className="overflow-hidden rounded-[1.5rem]">
                           <Image
-                            src={memory.imageDataUrl}
+                            src={previewMedia}
                             alt={memory.title}
                             width={640}
                             height={320}
@@ -309,8 +314,8 @@ export default function TimelinePage() {
                           />
                         </div>
                       ) : (
-                        <div className="rounded-[1.5rem] bg-[linear-gradient(180deg,_rgba(248,244,236,0.95),_rgba(232,241,246,0.9))] px-5 py-8">
-                          <p className="text-sm leading-7 text-slate-500">
+                        <div className="rounded-2xl bg-white px-5 py-8">
+                          <p className="text-sm leading-7 text-gray-500">
                             {unlocked
                               ? "Ready to be opened."
                               : "Waiting quietly for its day."}
@@ -318,13 +323,13 @@ export default function TimelinePage() {
                         </div>
                       )}
 
-                      <p className="mt-5 line-clamp-3 text-sm leading-7 text-slate-600">
+                      <p className="mt-5 line-clamp-3 text-sm leading-7 text-gray-600">
                         {unlocked
                           ? memory.message
                           : "This memory is still tucked away. Its full message will appear when the unlock date arrives."}
                       </p>
 
-                      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+                      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
                         <span>Unlocks {formatDate(memory.unlockDate)}</span>
                         <span>Saved {formatCreatedAt(memory.createdAt)}</span>
                       </div>
