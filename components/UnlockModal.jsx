@@ -91,12 +91,15 @@ function getMemoryMedia(memory) {
     memory?.videoUrl,
   ].filter(Boolean);
 
-  return sources.filter((src, index) => sources.indexOf(src) === index).map((src) => ({
-    src,
-    isVideo:
-      src.startsWith("data:video/") ||
-      /\.(mp4|webm|ogg|mov)$/i.test(src),
-  }));
+  return sources
+    .filter((src, index) => sources.indexOf(src) === index)
+    .map((src, index) => ({
+      src,
+      rotation: [-3, 2, -2, 4, -1, 3][index % 6],
+      isVideo:
+        src.startsWith("data:video/") ||
+        /\.(mp4|webm|ogg|mov)$/i.test(src),
+    }));
 }
 
 function IconButton({ href, label, children }) {
@@ -117,6 +120,7 @@ export default function UnlockModal({
   memory,
   onClose,
   onDelete,
+  shareUrl,
   shareLinks,
   metaText,
 }) {
@@ -223,14 +227,14 @@ export default function UnlockModal({
       await navigator.share({
         title: memory?.title || "Dear Tomorrow",
         text: memory?.message || "",
-        url: window.location.href,
+        url: shareUrl || window.location.href,
       });
     } catch {}
   }
 
   async function handleCopyLink() {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(shareUrl || window.location.href);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {}
@@ -319,78 +323,16 @@ export default function UnlockModal({
         ) : null}
       </div>
 
-      <div className="relative flex min-h-screen items-center justify-center px-4 py-6 sm:px-6 sm:py-10">
+      <div className="relative flex min-h-screen items-start justify-center px-4 py-6 sm:px-6 sm:py-10">
         <div
-          className={`relative w-full max-w-5xl overflow-hidden rounded-[2.5rem] border border-white/65 bg-white/30 shadow-[0_30px_120px_rgba(68,92,108,0.18)] backdrop-blur-xl transition duration-700 ease-out ${
+          className={`relative w-full max-w-6xl overflow-hidden rounded-[2.5rem] border border-white/65 bg-white/60 shadow-[0_30px_120px_rgba(68,92,108,0.18)] backdrop-blur-xl transition duration-700 ease-out ${
             isVisible
               ? "translate-y-0 scale-100 opacity-100"
               : "translate-y-8 scale-[0.985] opacity-0"
           }`}
         >
-          <div className="grid min-h-[min(92vh,58rem)] gap-0 lg:grid-cols-[1.04fr_0.96fr]">
-            <div className="relative min-h-[18rem] overflow-hidden rounded-t-[2.5rem] lg:rounded-l-[2.5rem] lg:rounded-tr-none">
-              {mediaItems.length > 0 ? (
-                <div
-                  className={`grid h-full min-h-[28rem] w-full gap-3 bg-[linear-gradient(180deg,_rgba(252,248,239,0.7)_0%,_rgba(239,229,207,0.7)_46%,_rgba(211,232,244,0.82)_100%)] p-3 transition duration-[1400ms] ease-out ${
-                    isVisible ? "scale-100 opacity-100" : "scale-105 opacity-0"
-                  } ${
-                    mediaItems.length === 1
-                      ? "grid-cols-1"
-                      : mediaItems.length === 2
-                        ? "grid-cols-1 sm:grid-cols-2"
-                        : "grid-cols-2"
-                  }`}
-                >
-                  {mediaItems.map((item, index) => (
-                    <div
-                      key={`${item.src}-${index}`}
-                      className={`relative overflow-hidden rounded-[1.75rem] bg-white/55 ${
-                        mediaItems.length === 3 && index === 0
-                          ? "col-span-2 min-h-[16rem]"
-                          : "min-h-[12rem]"
-                      } ${
-                        mediaItems.length >= 4 && index === 0
-                          ? "col-span-2 row-span-2 min-h-[20rem]"
-                          : ""
-                      }`}
-                    >
-                      {item.isVideo ? (
-                        <video
-                          src={item.src}
-                          controls
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <Image
-                          src={item.src}
-                          alt={`${memory.title} media ${index + 1}`}
-                          width={1400}
-                          height={1400}
-                          unoptimized
-                          className="h-full w-full object-cover"
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div
-                  className={`flex h-full min-h-[18rem] w-full items-end bg-[linear-gradient(180deg,_rgba(252,248,239,0.88)_0%,_rgba(239,229,207,0.88)_46%,_rgba(211,232,244,0.92)_100%)] p-8 transition duration-[1400ms] ease-out sm:p-10 ${
-                    isVisible ? "scale-100 opacity-100" : "scale-105 opacity-0"
-                  }`}
-                >
-                  <p className="text-elevated max-w-sm text-sm leading-7 sm:text-base">
-                    A quiet piece of your story, carried forward by light, tide,
-                    and time.
-                  </p>
-                </div>
-              )}
-
-              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,_rgba(255,255,255,0.02)_0%,_rgba(28,43,56,0.16)_100%)]" />
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,246,219,0.22)_0%,_rgba(255,246,219,0.08)_32%,_rgba(255,246,219,0)_56%)]" />
-            </div>
-
-            <div className="flex flex-col justify-between px-6 py-7 sm:px-10 sm:py-10 lg:px-12 lg:py-12">
+          <div className="flex min-h-[calc(100vh-3rem)] flex-col">
+            <div className="px-6 py-7 sm:px-10 sm:py-10 lg:px-12 lg:py-12">
               <div
                 className={`transition duration-700 delay-100 ease-out ${
                   isVisible
@@ -417,89 +359,140 @@ export default function UnlockModal({
                 </p>
 
                 <div className="mt-8 rounded-[2rem] border border-white/55 bg-white/38 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.36)] sm:px-7 sm:py-8">
-                  <p
-                    className={`${handwritten.className} text-elevated whitespace-pre-wrap text-[2rem] leading-[1.48] sm:text-[2.4rem]`}
-                  >
+                  <p className="text-elevated whitespace-pre-wrap text-base leading-8 sm:text-lg">
                     {memory.message}
                   </p>
                 </div>
+              </div>
+            </div>
 
-                <div className="mt-8 flex flex-wrap gap-3">
-                  {shareLinks?.facebook ? (
-                    <IconButton href={shareLinks.facebook} label="Share on Facebook">
-                      <svg
-                        aria-hidden="true"
-                        viewBox="0 0 24 24"
-                        className="h-5 w-5 fill-current"
+            <div className="relative min-h-[18rem] flex-1 overflow-hidden border-t border-white/40">
+              {mediaItems.length > 0 ? (
+                <div
+                  className={`h-full min-h-[28rem] w-full overflow-y-auto bg-[linear-gradient(180deg,_rgba(252,248,239,0.7)_0%,_rgba(239,229,207,0.7)_46%,_rgba(211,232,244,0.82)_100%)] px-4 py-5 sm:px-6 sm:py-6 transition duration-[1400ms] ease-out ${
+                    isVisible ? "scale-100 opacity-100" : "scale-105 opacity-0"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-start justify-center gap-x-4 gap-y-6 pb-2 sm:gap-x-6 sm:gap-y-8">
+                    {mediaItems.map((item, index) => (
+                      <figure
+                        key={`${item.src}-${index}`}
+                        className="relative w-[14rem] shrink-0 rounded-sm bg-[#fffdf8] p-3 pb-4 shadow-[0_20px_45px_rgba(74,60,49,0.18)] ring-1 ring-[#eadfce] sm:w-[16rem]"
+                        style={{
+                          transform: `rotate(${item.rotation}deg)`,
+                          marginTop: index % 3 === 0 ? "0.75rem" : "0",
+                          marginLeft: index % 4 === 0 ? "-0.35rem" : "0",
+                          marginRight: index % 5 === 0 ? "-0.35rem" : "0",
+                          zIndex: mediaItems.length - index,
+                        }}
                       >
-                        <path d="M13.5 21v-7h2.3l.4-2.8h-2.7V9.4c0-.8.2-1.4 1.4-1.4H16V5.5c-.2 0-.9-.1-1.8-.1-1.8 0-3 1.1-3 3.2v2.6H9v2.8h2.4v7h2.1Z" />
-                      </svg>
-                    </IconButton>
-                  ) : null}
+                        <div className="overflow-hidden bg-[#f3ecdf]">
+                          {item.isVideo ? (
+                            <video
+                              src={item.src}
+                              controls
+                              className="h-auto max-h-[18rem] w-full object-contain bg-[#f3ecdf]"
+                            />
+                          ) : (
+                            <Image
+                              src={item.src}
+                              alt={`${memory.title} media ${index + 1}`}
+                              width={1400}
+                              height={1400}
+                              unoptimized
+                              className="h-auto max-h-[18rem] w-full object-contain bg-[#f3ecdf]"
+                            />
+                          )}
+                        </div>
+                      </figure>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={`flex h-full min-h-[18rem] w-full items-end bg-[linear-gradient(180deg,_rgba(252,248,239,0.88)_0%,_rgba(239,229,207,0.88)_46%,_rgba(211,232,244,0.92)_100%)] p-8 transition duration-[1400ms] ease-out sm:p-10 ${
+                    isVisible ? "scale-100 opacity-100" : "scale-105 opacity-0"
+                  }`}
+                >
+                  <p className="text-elevated max-w-sm text-sm leading-7 sm:text-base">
+                    A quiet piece of your story, carried forward by light, tide,
+                    and time.
+                  </p>
+                </div>
+              )}
 
-                  {shareLinks?.twitter ? (
-                    <IconButton href={shareLinks.twitter} label="Share on Twitter">
-                      <svg
-                        aria-hidden="true"
-                        viewBox="0 0 24 24"
-                        className="h-5 w-5 fill-current"
-                      >
-                        <path d="M18.9 3H22l-6.8 7.8L23 21h-6.1l-4.8-6.3L6.6 21H3.5l7.3-8.3L3 3h6.2l4.3 5.8L18.9 3Zm-1.1 16h1.7L8.3 4.9H6.5L17.8 19Z" />
-                      </svg>
-                    </IconButton>
-                  ) : null}
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,_rgba(255,255,255,0.02)_0%,_rgba(28,43,56,0.16)_100%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,246,219,0.22)_0%,_rgba(255,246,219,0.08)_32%,_rgba(255,246,219,0)_56%)]" />
+            </div>
 
-                  {shareLinks?.whatsapp ? (
-                    <IconButton href={shareLinks.whatsapp} label="Share on WhatsApp">
-                      <svg
-                        aria-hidden="true"
-                        viewBox="0 0 24 24"
-                        className="h-5 w-5 fill-current"
-                      >
-                        <path d="M12 2a9.8 9.8 0 0 0-8.4 14.8L2 22l5.3-1.5A9.9 9.9 0 1 0 12 2Zm0 17.9c-1.5 0-3-.4-4.2-1.2l-.3-.2-3.1.9.9-3-.2-.3a8 8 0 1 1 6.9 3.8Zm4.4-5.9c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.6.1l-.5.7c-.1.2-.3.2-.6.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.3 0-.5.1-.6l.4-.4.3-.5c.1-.1.1-.3 0-.5l-.7-1.7c-.2-.4-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3c-.2.2-.8.8-.8 1.9s.8 2.2.9 2.3c.1.2 1.6 2.5 4 3.4 1.5.6 2 .6 2.7.5.4-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1-.1 0-.3-.1-.5-.2Z" />
-                      </svg>
-                    </IconButton>
-                  ) : null}
-
-                  {canNativeShare ? (
-                    <button
-                      type="button"
-                      onClick={handleWebShare}
-                      className="text-elevated inline-flex min-h-11 items-center justify-center rounded-full bg-white/70 px-4 text-sm font-semibold transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
+            <div className="border-t border-white/40 px-6 py-6 sm:px-10 lg:px-12">
+              <div className="flex flex-wrap gap-3">
+                {shareLinks?.facebook ? (
+                  <IconButton href={shareLinks.facebook} label="Share on Facebook">
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5 fill-current"
                     >
-                      Share
-                    </button>
-                  ) : null}
+                      <path d="M13.5 21v-7h2.3l.4-2.8h-2.7V9.4c0-.8.2-1.4 1.4-1.4H16V5.5c-.2 0-.9-.1-1.8-.1-1.8 0-3 1.1-3 3.2v2.6H9v2.8h2.4v7h2.1Z" />
+                    </svg>
+                  </IconButton>
+                ) : null}
 
+                {shareLinks?.twitter ? (
+                  <IconButton href={shareLinks.twitter} label="Share on Twitter">
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5 fill-current"
+                    >
+                      <path d="M18.9 3H22l-6.8 7.8L23 21h-6.1l-4.8-6.3L6.6 21H3.5l7.3-8.3L3 3h6.2l4.3 5.8L18.9 3Zm-1.1 16h1.7L8.3 4.9H6.5L17.8 19Z" />
+                    </svg>
+                  </IconButton>
+                ) : null}
+
+                {shareLinks?.whatsapp ? (
+                  <IconButton href={shareLinks.whatsapp} label="Share on WhatsApp">
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5 fill-current"
+                    >
+                      <path d="M12 2a9.8 9.8 0 0 0-8.4 14.8L2 22l5.3-1.5A9.9 9.9 0 1 0 12 2Zm0 17.9c-1.5 0-3-.4-4.2-1.2l-.3-.2-3.1.9.9-3-.2-.3a8 8 0 1 1 6.9 3.8Zm4.4-5.9c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.6.1l-.5.7c-.1.2-.3.2-.6.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.3 0-.5.1-.6l.4-.4.3-.5c.1-.1.1-.3 0-.5l-.7-1.7c-.2-.4-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3c-.2.2-.8.8-.8 1.9s.8 2.2.9 2.3c.1.2 1.6 2.5 4 3.4 1.5.6 2 .6 2.7.5.4-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1-.1 0-.3-.1-.5-.2Z" />
+                    </svg>
+                  </IconButton>
+                ) : null}
+
+                {canNativeShare ? (
                   <button
                     type="button"
-                    onClick={handleCopyLink}
+                    onClick={handleWebShare}
                     className="text-elevated inline-flex min-h-11 items-center justify-center rounded-full bg-white/70 px-4 text-sm font-semibold transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
                   >
-                    {copied ? "Link Copied" : "Copy Link"}
+                    Share
                   </button>
+                ) : null}
 
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    className="inline-flex min-h-11 items-center justify-center rounded-full bg-rose-100 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
-                  >
-                    Delete Memory
-                  </button>
-                </div>
-              </div>
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="text-elevated inline-flex min-h-11 items-center justify-center rounded-full bg-white/70 px-4 text-sm font-semibold transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
+                >
+                  {copied ? "Link Copied" : "Copy Link"}
+                </button>
 
-              <div
-                className={`mt-8 transition duration-700 delay-150 ease-out ${
-                  isVisible
-                    ? "translate-y-0 opacity-100"
-                    : "translate-y-4 opacity-0"
-                }`}
-              >
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="inline-flex min-h-11 items-center justify-center rounded-full bg-rose-100 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
+                >
+                  Delete Memory
+                </button>
+
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="text-elevated inline-flex min-h-14 items-center justify-center rounded-full border border-white/65 bg-white/55 px-7 text-sm font-semibold tracking-[0.18em] transition hover:bg-white/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
+                  className="text-elevated inline-flex min-h-11 items-center justify-center rounded-full border border-white/65 bg-white/55 px-7 text-sm font-semibold tracking-[0.18em] transition hover:bg-white/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
                 >
                   Return to Timeline
                 </button>

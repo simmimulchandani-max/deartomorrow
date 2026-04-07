@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { buildMemoryPath } from '@/lib/memories';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 
 const STORAGE_KEY = 'dear-tomorrow-memories';
@@ -14,8 +15,10 @@ export default function CreateMemoryPage() {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [unlockDate, setUnlockDate] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [createdMemoryPath, setCreatedMemoryPath] = useState<string | null>(null);
   const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -36,6 +39,7 @@ export default function CreateMemoryPage() {
 
     try {
       const supabase = getSupabaseClient();
+      const memoryId = crypto.randomUUID();
 
       const selectedFiles = fileInputRef.current?.files
         ? Array.from(fileInputRef.current.files)
@@ -45,6 +49,7 @@ export default function CreateMemoryPage() {
         title: title.trim(),
         message: message.trim(),
         unlockDate: unlockDate.trim(),
+        password: password.trim(),
         media: selectedFiles.map((file) => ({
           name: file.name,
           type: file.type,
@@ -59,7 +64,7 @@ export default function CreateMemoryPage() {
       const uploadedMedia = await Promise.all(
         selectedFiles.map(async (file) => {
           const fileExt = file.name.split('.').pop() ?? 'file';
-          const fileName = `${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
+          const fileName = `memories/${memoryId}/${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
 
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from(SUPABASE_STORAGE_BUCKET)
@@ -89,25 +94,64 @@ export default function CreateMemoryPage() {
 
       const mediaUrl = uploadedMedia[0]?.publicUrl ?? null;
 
-      const insertPayload = {
-        title: payload.title,
-        message: payload.message,
-        unlock_date: payload.unlockDate,
-        media_url: mediaUrl,
-      };
+      const createResponse = await fetch('/api/shared-memories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: memoryId,
+          title: payload.title,
+          message: payload.message,
+          unlockDate: payload.unlockDate,
+          mediaUrl,
+          password: payload.password,
+        }),
+      });
 
-      const { data: insertedMemory, error: insertError } = await supabase
-        .from('memories')
-        .insert(insertPayload)
-        .select()
-        .single();
+      const responseText = await createResponse.text();
+      let createPayload: {
+        error?: string;
+        memory?: {
+          id?: string;
+          created_at?: string;
+        } | null;
+      } | null = null;
 
-      if (insertError) {
+      if (responseText) {
+        try {
+          createPayload = JSON.parse(responseText) as {
+            error?: string;
+            memory?: {
+              id?: string;
+              created_at?: string;
+            } | null;
+          };
+        } catch {
+          createPayload = null;
+        }
+      }
+
+      console.log('Create memory response data:', createPayload);
+
+      if (!createResponse.ok) {
         if (uploadedMedia.length > 0) {
           const uploadedPaths = uploadedMedia.map((item) => item.path);
           await supabase.storage.from(SUPABASE_STORAGE_BUCKET).remove(uploadedPaths);
         }
-        throw new Error(insertError.message);
+        throw new Error(createPayload?.error ?? 'Failed to create memory');
+      }
+
+      const insertedMemory = createPayload?.memory;
+
+      if (!insertedMemory || typeof insertedMemory !== 'object') {
+        if (uploadedMedia.length > 0) {
+          const uploadedPaths = uploadedMedia.map((item) => item.path);
+          await supabase.storage.from(SUPABASE_STORAGE_BUCKET).remove(uploadedPaths);
+        }
+        throw new Error(
+          'Memory creation did not return a saved record. Please try again.'
+        );
       }
 
       const existingMemories = window.localStorage.getItem(STORAGE_KEY);
@@ -118,10 +162,7 @@ export default function CreateMemoryPage() {
           : new Date().toISOString();
 
       const memoryRecord = {
-        id:
-          typeof insertedMemory?.id === 'string'
-            ? insertedMemory.id
-            : crypto.randomUUID(),
+        id: memoryId,
         title: payload.title,
         message: payload.message,
         unlockDate: payload.unlockDate,
@@ -142,8 +183,10 @@ export default function CreateMemoryPage() {
       setTitle('');
       setMessage('');
       setUnlockDate('');
+      setPassword('');
       if (fileInputRef.current) fileInputRef.current.value = '';
       setSelectedFileNames([]);
+      setCreatedMemoryPath(buildMemoryPath(memoryId));
       setSubmitted(true);
     } catch (error) {
       console.error('Create memory error:', error);
@@ -190,11 +233,27 @@ export default function CreateMemoryPage() {
               type="button"
               onClick={() => {
                 setSubmitted(false);
+                setCreatedMemoryPath(null);
                 router.push('/create');
               }}
               className={NAV_BUTTON_CLASS}
             >
               Create Memory
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!createdMemoryPath) {
+                  return;
+                }
+
+                await navigator.clipboard.writeText(
+                  `${window.location.origin}${createdMemoryPath}`
+                );
+              }}
+              className={NAV_BUTTON_CLASS}
+            >
+              Copy Shareable Link
             </button>
           </div>
         </div>
@@ -296,6 +355,19 @@ export default function CreateMemoryPage() {
               value={unlockDate}
               onChange={(e) => setUnlockDate(e.target.value)}
               className="w-full p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+            />
+          </div>
+
+          <div>
+            <label className="block mb-2 font-medium text-gray-700">
+              PASSWORD (OPTIONAL)
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              placeholder="Protect this shared memory with a password"
             />
           </div>
 

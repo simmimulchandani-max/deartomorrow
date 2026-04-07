@@ -22,6 +22,9 @@ const handwrittenFont = Dancing_Script({
 export const metadata: Metadata = {
   title: "Dear Tomorrow",
   description: "Leave something for your future self.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export const viewport: Viewport = {

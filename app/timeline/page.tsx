@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import CountdownText from "@/components/CountdownText";
+import { buildMemoryPath } from "@/lib/memories";
 import UnlockModal from "@/components/UnlockModal";
 
 const STORAGE_KEY = "dear-tomorrow-memories";
@@ -21,6 +23,8 @@ type MemoryRecord = {
 
 const NAV_BUTTON_CLASS =
   "px-4 py-2 rounded-full bg-[#f7c7b6] border border-[#e7b6a4] shadow text-[#4a3c31] hover:bg-[#f4bba8]";
+const MEMORY_PLACEHOLDER =
+  "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 360'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23f8efe3'/%3E%3Cstop offset='100%25' stop-color='%23d9e8f0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='640' height='360' rx='36' fill='url(%23g)'/%3E%3Ccircle cx='156' cy='120' r='40' fill='%23fff8ef' fill-opacity='.95'/%3E%3Cpath d='M90 274c28-48 67-72 117-72 38 0 73 14 104 42 16 14 31 30 46 30 14 0 28-13 47-39 24-33 53-50 87-50 48 0 84 29 108 89H90Z' fill='%23f4c8b8' fill-opacity='.8'/%3E%3Cpath d='M44 286c45-35 92-53 141-53 43 0 88 15 136 45 30 19 60 29 92 29 34 0 67-10 99-31 33-21 61-32 85-32 16 0 31 3 45 10v70H44Z' fill='%23fffaf4' fill-opacity='.75'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle' fill='%236d6159' font-family='Arial, sans-serif' font-size='28'%3EA memory waiting to bloom%3C/text%3E%3C/svg%3E";
 
 function isUnlocked(unlockDate: string) {
   const today = new Date().toISOString().split("T")[0];
@@ -43,9 +47,15 @@ function formatCreatedAt(dateString: string) {
   }).format(new Date(dateString));
 }
 
+function getMemoryThumbnail(memory: MemoryRecord) {
+  return memory.imageDataUrl || memory.mediaUrls?.[0] || memory.mediaUrl || null;
+}
+
 function buildShareLinks(memory: MemoryRecord) {
   const shareUrl =
-    typeof window !== "undefined" ? window.location.href : "";
+    typeof window !== "undefined"
+      ? `${window.location.origin}${buildMemoryPath(memory.id)}`
+      : "";
   const shareText = `${memory.title} - ${memory.message}`;
 
   return {
@@ -233,29 +243,28 @@ export default function TimelinePage() {
           <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {memories.map((memory) => {
               const unlocked = isUnlocked(memory.unlockDate);
-              const previewMedia =
-                memory.imageDataUrl ||
-                memory.mediaUrls?.[0] ||
-                memory.mediaUrl ||
-                null;
+              const previewMedia = getMemoryThumbnail(memory);
+              const cardImageSrc = unlocked
+                ? previewMedia ?? MEMORY_PLACEHOLDER
+                : MEMORY_PLACEHOLDER;
 
               return (
                 <article
                   key={memory.id}
-                  className={`group relative overflow-hidden rounded-3xl border bg-gray-100 text-left shadow transition ${
+                  className={`group relative overflow-hidden rounded-[2rem] border bg-[#fcfaf6] text-left shadow-[0_18px_50px_rgba(74,60,49,0.08)] transition ${
                     unlocked
-                      ? "border-gray-200 hover:-translate-y-1"
-                      : "border-gray-200 opacity-90"
+                      ? "border-[#e7ddd2] hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(74,60,49,0.12)]"
+                      : "border-[#e7ddd2] opacity-90"
                   }`}
                 >
                   <div
                     className={`absolute inset-0 transition ${
                       unlocked
                         ? "bg-transparent"
-                        : "bg-white/20 backdrop-blur-[2px]"
+                        : "bg-white/20"
                     }`}
                   />
-                  <div className={`relative p-6 ${unlocked ? "" : "blur-[2px]"}`}>
+                  <div className="relative p-5 sm:p-6">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <span
@@ -267,9 +276,6 @@ export default function TimelinePage() {
                         >
                           {unlocked ? "Unlocked" : "Locked"}
                         </span>
-                        <h2 className="mt-4 line-clamp-2 text-3xl font-bold leading-tight text-gray-800">
-                          {memory.title}
-                        </h2>
                       </div>
                       <button
                         type="button"
@@ -289,7 +295,7 @@ export default function TimelinePage() {
                         }
                       }}
                       disabled={!unlocked}
-                      className={`mt-5 block w-full rounded-[1.6rem] text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 ${
+                      className={`mt-5 block w-full rounded-[1.7rem] border border-[#efe4d8] bg-white/70 p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 sm:p-4 ${
                         unlocked
                           ? "cursor-pointer active:translate-y-px"
                           : "cursor-not-allowed"
@@ -300,38 +306,47 @@ export default function TimelinePage() {
                           : `Memory ${memory.title} is still locked`
                       }
                     >
-                      {previewMedia ? (
-                        <div className="overflow-hidden rounded-[1.5rem]">
+                      <div className="flex flex-col gap-4 sm:gap-5">
+                        <div className="overflow-hidden rounded-[1.4rem] bg-[#f5ede3]">
                           <Image
-                            src={previewMedia}
+                            src={cardImageSrc}
                             alt={memory.title}
                             width={640}
                             height={320}
                             unoptimized
-                            className={`h-48 w-full object-cover transition ${
+                            className={`h-48 w-full object-cover transition sm:h-56 ${
                               unlocked ? "" : "scale-[1.03]"
                             }`}
                           />
                         </div>
-                      ) : (
-                        <div className="rounded-2xl bg-white px-5 py-8">
-                          <p className="text-sm leading-7 text-gray-500">
-                            {unlocked
-                              ? "Ready to be opened."
-                              : "Waiting quietly for its day."}
-                          </p>
+
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <h2 className="line-clamp-2 text-2xl font-bold leading-tight text-gray-800 sm:text-[1.75rem]">
+                              {memory.title}
+                            </h2>
+                            <p className="mt-2 text-sm text-gray-500">
+                              Unlocks {formatDate(memory.unlockDate)}
+                            </p>
+                          </div>
+
+                          <div className="shrink-0 rounded-2xl bg-[#faf4ed] px-4 py-3 text-sm text-gray-500 ring-1 ring-[#f0e3d6] sm:max-w-[13rem]">
+                            <CountdownText
+                              unlockDate={memory.unlockDate}
+                              className="block"
+                            />
+                          </div>
                         </div>
-                      )}
 
-                      <p className="mt-5 line-clamp-3 text-sm leading-7 text-gray-600">
-                        {unlocked
-                          ? memory.message
-                          : "This memory is still tucked away. Its full message will appear when the unlock date arrives."}
-                      </p>
+                        <p className="line-clamp-3 text-sm leading-7 text-gray-600">
+                          {unlocked
+                            ? memory.message
+                            : "This memory is still tucked away. Its full message will appear when the unlock date arrives."}
+                        </p>
 
-                      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
-                        <span>Unlocks {formatDate(memory.unlockDate)}</span>
-                        <span>Saved {formatCreatedAt(memory.createdAt)}</span>
+                        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
+                          <span>Saved {formatCreatedAt(memory.createdAt)}</span>
+                        </div>
                       </div>
                     </button>
                   </div>
@@ -347,6 +362,11 @@ export default function TimelinePage() {
           memory={selectedMemory}
           onClose={closeModal}
           onDelete={deleteMemory}
+          shareUrl={
+            selectedMemory
+              ? `${window.location.origin}${buildMemoryPath(selectedMemory.id)}`
+              : ""
+          }
           shareLinks={buildShareLinks(selectedMemory)}
           metaText={`Unlocked ${formatDate(
             selectedMemory.unlockDate
