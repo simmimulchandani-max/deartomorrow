@@ -1,14 +1,7 @@
 import { hashMemoryPassword } from "@/lib/memorySecurity";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
-type CreateSharedMemoryRequest = {
-  id?: string;
-  title?: string;
-  message?: string;
-  unlockDate?: string;
-  mediaUrl?: string | null;
-  password?: string;
-};
+const SUPABASE_STORAGE_BUCKET = "dear tomorrow";
 
 function isValidDateString(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -16,13 +9,15 @@ function isValidDateString(value: string) {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as CreateSharedMemoryRequest;
-    const id = body.id?.trim() ?? crypto.randomUUID();
-    const title = body.title?.trim() ?? "";
-    const message = body.message?.trim() ?? "";
-    const unlockDate = body.unlockDate?.trim() ?? "";
-    const mediaUrl = body.mediaUrl?.trim() ?? null;
-    const password = body.password?.trim() ?? "";
+    const formData = await request.formData();
+    const id = String(formData.get("id") ?? "").trim() || crypto.randomUUID();
+    const title = String(formData.get("title") ?? "").trim();
+    const message = String(formData.get("message") ?? "").trim();
+    const unlockDate = String(formData.get("unlockDate") ?? "").trim();
+    const password = String(formData.get("password") ?? "").trim();
+    const files = formData
+      .getAll("media")
+      .filter((value): value is File => value instanceof File && value.size > 0);
 
     if (!title || !message || !unlockDate) {
       return Response.json(
@@ -40,35 +35,84 @@ export async function POST(request: Request) {
 
     const supabase = getSupabaseAdminClient();
     const passwordHash = password ? hashMemoryPassword(password) : null;
+    const uploadedMedia: Array<{ path: string; publicUrl: string }> = [];
 
-    const { data, error } = await supabase
-      .from("memories")
-      .insert({
-        id,
-        title,
-        message,
-        unlock_date: unlockDate,
-        media_url: mediaUrl,
-        password_hash: passwordHash,
-      })
-      .select("id, title, message, unlock_date, media_url, created_at");
+    try {
+      for (const file of files) {
+        const extension = file.name.includes(".") ? file.name.split(".").pop() : undefined;
+        const safeExtension = extension?.replace(/[^a-zA-Z0-9]/g, "") || "file";
+        const storagePath = `memories/${id}/${Date.now()}-${crypto.randomUUID()}.${safeExtension}`;
+        const fileBytes = new Uint8Array(await file.arrayBuffer());
 
-    if (error) {
-      return Response.json({ error: error.message }, { status: 500 });
-    }
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from(SUPABASE_STORAGE_BUCKET)
+          .upload(storagePath, fileBytes, {
+            cacheControl: "3600",
+            contentType: file.type || "application/octet-stream",
+          });
 
-    const insertedMemory = Array.isArray(data) ? data[0] ?? null : null;
+        if (uploadError) {
+          throw new Error(uploadError.message);
+        }
 
-    console.log("Shared memory insert response:", data);
+        const { data: publicUrlData } = supabase.storage
+          .from(SUPABASE_STORAGE_BUCKET)
+          .getPublicUrl(uploadData.path);
 
-    if (!insertedMemory) {
+        if (!publicUrlData.publicUrl) {
+          throw new Error("Failed to generate a public URL for the uploaded media.");
+        }
+
+        uploadedMedia.push({
+          path: uploadData.path,
+          publicUrl: publicUrlData.publicUrl,
+        });
+      }
+
+      const mediaUrls = uploadedMedia.map((item) => item.publicUrl);
+      const mediaUrl = mediaUrls[0] ?? null;
+      const { data, error } = await supabase
+        .from("memories")
+        .insert({
+          id,
+          title,
+          message,
+          unlock_date: unlockDate,
+          media_url: mediaUrl,
+          password_hash: passwordHash,
+        })
+        .select("id, title, message, unlock_date, media_url, created_at");
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const insertedMemory = Array.isArray(data) ? data[0] ?? null : null;
+
+      console.log("Shared memory insert response:", data);
+
+      if (!insertedMemory) {
+        throw new Error("Memory was created, but no row was returned from Supabase.");
+      }
+
       return Response.json(
-        { error: "Memory was created, but no row was returned from Supabase." },
-        { status: 500 }
+        {
+          memory: {
+            ...insertedMemory,
+            media_urls: mediaUrls,
+          },
+        },
+        { status: 201 }
       );
-    }
+    } catch (error) {
+      if (uploadedMedia.length > 0) {
+        await supabase.storage
+          .from(SUPABASE_STORAGE_BUCKET)
+          .remove(uploadedMedia.map((item) => item.path));
+      }
 
-    return Response.json({ memory: insertedMemory }, { status: 201 });
+      throw error;
+    }
   } catch (error) {
     console.error("Create shared memory route error:", error);
 

@@ -3,10 +3,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { buildMemoryPath } from '@/lib/memories';
-import { getSupabaseClient } from '@/lib/supabaseClient';
 
 const STORAGE_KEY = 'dear-tomorrow-memories';
-const SUPABASE_STORAGE_BUCKET = 'dear tomorrow';
 const NAV_BUTTON_CLASS =
   'px-4 py-2 rounded-full bg-[#f7c7b6] border border-[#e7b6a4] shadow text-[#4a3c31] hover:bg-[#f4bba8]';
 
@@ -24,12 +22,7 @@ export default function CreateMemoryPage() {
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      // If these values change in .env.local, restart `next dev` so Next.js reloads them.
-      console.log('Supabase env check:', {
-        hasUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
-        hasAnonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
-        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? null,
-      });
+      console.log('Create memory form uses the server route for uploads and inserts.');
     }
   }, []);
 
@@ -38,75 +31,32 @@ export default function CreateMemoryPage() {
     setLoading(true);
 
     try {
-      const supabase = getSupabaseClient();
       const memoryId = crypto.randomUUID();
-
-      const selectedFiles = fileInputRef.current?.files
-        ? Array.from(fileInputRef.current.files)
-        : [];
-
+      const selectedFiles = fileInputRef.current?.files ? Array.from(fileInputRef.current.files) : [];
       const payload = {
         title: title.trim(),
         message: message.trim(),
         unlockDate: unlockDate.trim(),
         password: password.trim(),
-        media: selectedFiles.map((file) => ({
-          name: file.name,
-          type: file.type,
-          size: file.size,
-        })),
       };
 
       if (!payload.title || !payload.message || !payload.unlockDate) {
         throw new Error('Title, message, and unlock date are required');
       }
 
-      const uploadedMedia = await Promise.all(
-        selectedFiles.map(async (file) => {
-          const fileExt = file.name.split('.').pop() ?? 'file';
-          const fileName = `memories/${memoryId}/${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
-
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from(SUPABASE_STORAGE_BUCKET)
-            .upload(fileName, file, {
-              cacheControl: '3600',
-              contentType: file.type,
-            });
-
-          if (uploadError) throw new Error(uploadError.message);
-
-          const { data: publicUrlData } = supabase.storage
-            .from(SUPABASE_STORAGE_BUCKET)
-            .getPublicUrl(uploadData.path);
-
-          if (!publicUrlData.publicUrl) {
-            throw new Error('Failed to generate a public URL for the uploaded media');
-          }
-
-          return {
-            path: uploadData.path,
-            publicUrl: publicUrlData.publicUrl,
-            name: file.name,
-            type: file.type,
-          };
-        })
-      );
-
-      const mediaUrl = uploadedMedia[0]?.publicUrl ?? null;
+      const formData = new FormData();
+      formData.append('id', memoryId);
+      formData.append('title', payload.title);
+      formData.append('message', payload.message);
+      formData.append('unlockDate', payload.unlockDate);
+      formData.append('password', payload.password);
+      selectedFiles.forEach((file) => {
+        formData.append('media', file);
+      });
 
       const createResponse = await fetch('/api/shared-memories', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          id: memoryId,
-          title: payload.title,
-          message: payload.message,
-          unlockDate: payload.unlockDate,
-          mediaUrl,
-          password: payload.password,
-        }),
+        body: formData,
       });
 
       const responseText = await createResponse.text();
@@ -115,6 +65,8 @@ export default function CreateMemoryPage() {
         memory?: {
           id?: string;
           created_at?: string;
+          media_url?: string | null;
+          media_urls?: string[];
         } | null;
       } | null = null;
 
@@ -125,6 +77,8 @@ export default function CreateMemoryPage() {
             memory?: {
               id?: string;
               created_at?: string;
+              media_url?: string | null;
+              media_urls?: string[];
             } | null;
           };
         } catch {
@@ -135,20 +89,12 @@ export default function CreateMemoryPage() {
       console.log('Create memory response data:', createPayload);
 
       if (!createResponse.ok) {
-        if (uploadedMedia.length > 0) {
-          const uploadedPaths = uploadedMedia.map((item) => item.path);
-          await supabase.storage.from(SUPABASE_STORAGE_BUCKET).remove(uploadedPaths);
-        }
         throw new Error(createPayload?.error ?? 'Failed to create memory');
       }
 
       const insertedMemory = createPayload?.memory;
 
       if (!insertedMemory || typeof insertedMemory !== 'object') {
-        if (uploadedMedia.length > 0) {
-          const uploadedPaths = uploadedMedia.map((item) => item.path);
-          await supabase.storage.from(SUPABASE_STORAGE_BUCKET).remove(uploadedPaths);
-        }
         throw new Error(
           'Memory creation did not return a saved record. Please try again.'
         );
@@ -166,12 +112,12 @@ export default function CreateMemoryPage() {
         title: payload.title,
         message: payload.message,
         unlockDate: payload.unlockDate,
-        imageName: uploadedMedia[0]?.name ?? null,
-        imageDataUrl: uploadedMedia[0]?.type?.startsWith('image/')
-          ? mediaUrl
+        imageName: selectedFiles[0]?.name ?? null,
+        imageDataUrl: selectedFiles[0]?.type?.startsWith('image/')
+          ? insertedMemory.media_url ?? null
           : null,
-        mediaUrl,
-        mediaUrls: uploadedMedia.map((item) => item.publicUrl),
+        mediaUrl: insertedMemory.media_url ?? null,
+        mediaUrls: Array.isArray(insertedMemory.media_urls) ? insertedMemory.media_urls : [],
         createdAt,
       };
 
