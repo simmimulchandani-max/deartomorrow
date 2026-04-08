@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import CountdownText from "@/components/CountdownText";
-import { buildMemoryPath } from "@/lib/memories";
+import { buildMemoryPath } from "@/lib/memoryPaths";
 import UnlockModal from "@/components/UnlockModal";
 
 const STORAGE_KEY = "dear-tomorrow-memories";

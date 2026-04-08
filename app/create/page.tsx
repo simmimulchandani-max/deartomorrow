@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { buildMemoryPath } from '@/lib/memories';
+import { buildMemoryPath } from '@/lib/memoryPaths';
 
 const STORAGE_KEY = 'dear-tomorrow-memories';
 const NAV_BUTTON_CLASS =

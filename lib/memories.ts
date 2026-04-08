@@ -22,10 +22,6 @@ export type SharedMemory = {
   createdAt: string | null;
 };
 
-export function buildMemoryPath(memoryId: string) {
-  return `/memory/${memoryId}`;
-}
-
 export async function getMemoryById(memoryId: string): Promise<SharedMemory | null> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
