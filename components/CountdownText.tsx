@@ -12,7 +12,7 @@ export default function CountdownText({
   unlockDate,
   className,
 }: CountdownTextProps) {
-  const [label, setLabel] = useState("0:00:00");
+  const [, setTick] = useState(0);
 
   if (typeof window !== "undefined") {
     console.log("Countdown unlockDate:", unlockDate);
@@ -20,17 +20,14 @@ export default function CountdownText({
 
   useEffect(() => {
     if (!isValidUnlockDate(unlockDate)) {
-      setLabel("0:00:00");
       window.alert("Missing or invalid unlockDate for countdown.");
       return;
     }
 
-    setLabel(formatCountdown(unlockDate));
-
     const intervalId = window.setInterval(() => {
       const nextCountdown = getCountdownParts(unlockDate);
 
-      setLabel(formatCountdown(unlockDate));
+      setTick((currentTick) => currentTick + 1);
 
       if (nextCountdown.isUnlocked) {
         window.clearInterval(intervalId);
@@ -42,5 +39,9 @@ export default function CountdownText({
     };
   }, [unlockDate]);
 
-  return <span className={className}>{label}</span>;
+  return (
+    <span className={className}>
+      {isValidUnlockDate(unlockDate) ? formatCountdown(unlockDate) : "0:00:00"}
+    </span>
+  );
 }

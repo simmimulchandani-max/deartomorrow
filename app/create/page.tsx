@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { generateId } from '@/lib/generateId';
 import { buildMemoryPath } from '@/lib/memoryPaths';
 
 const STORAGE_KEY = 'dear-tomorrow-memories';
@@ -31,7 +32,7 @@ export default function CreateMemoryPage() {
     setLoading(true);
 
     try {
-      const memoryId = crypto.randomUUID();
+      const memoryId = generateId();
       const selectedFiles = fileInputRef.current?.files ? Array.from(fileInputRef.current.files) : [];
       const payload = {
         title: title.trim(),
@@ -210,31 +211,32 @@ export default function CreateMemoryPage() {
   return (
     <div className="min-h-screen bg-[#F5F0E6] flex flex-col items-center p-6">
       {/* Top Section */}
-      <div className="w-full max-w-4xl flex justify-between items-start mb-8">
+      <div className="w-full max-w-4xl mb-8 space-y-4">
+        <div className="flex justify-end">
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => router.push('/')}
+              className={NAV_BUTTON_CLASS}
+            >
+              Home
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/timeline')}
+              className={NAV_BUTTON_CLASS}
+            >
+              Timeline
+            </button>
+          </div>
+        </div>
+
         <div className="space-y-2">
           <span className="text-sm font-semibold text-gray-500">CREATE MEMORY</span>
           <h1 className="text-4xl font-bold leading-tight">Start a memory for tomorrow.</h1>
           <p className="text-gray-600 max-w-md">
             Fill in the details below to create a memory that you can revisit later. Add photos, videos, and a message to keep it special.
           </p>
-        </div>
-
-        {/* Right-side Pill Buttons */}
-        <div className="flex space-x-3">
-          <button
-            type="button"
-            onClick={() => router.push('/')}
-            className={NAV_BUTTON_CLASS}
-          >
-            Home
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push('/timeline')}
-            className={NAV_BUTTON_CLASS}
-          >
-            Timeline
-          </button>
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import { hashMemoryPassword } from "@/lib/memorySecurity";
+import { generateId } from "@/lib/generateId";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 const SUPABASE_STORAGE_BUCKET = "dear tomorrow";
@@ -10,7 +11,7 @@ function isValidDateString(value: string) {
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
-    const id = String(formData.get("id") ?? "").trim() || crypto.randomUUID();
+    const id = String(formData.get("id") ?? "").trim() || generateId();
     const title = String(formData.get("title") ?? "").trim();
     const message = String(formData.get("message") ?? "").trim();
     const unlockDate = String(formData.get("unlockDate") ?? "").trim();
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
       for (const file of files) {
         const extension = file.name.includes(".") ? file.name.split(".").pop() : undefined;
         const safeExtension = extension?.replace(/[^a-zA-Z0-9]/g, "") || "file";
-        const storagePath = `memories/${id}/${Date.now()}-${crypto.randomUUID()}.${safeExtension}`;
+        const storagePath = `memories/${id}/${Date.now()}-${generateId()}.${safeExtension}`;
         const fileBytes = new Uint8Array(await file.arrayBuffer());
 
         const { data: uploadData, error: uploadError } = await supabase.storage

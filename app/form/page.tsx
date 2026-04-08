@@ -40,7 +40,7 @@ export default function CreateCapsulePage() {
         return;
       }
 
-      const data = await res.json();
+      await res.json();
       router.push('/timeline');
     } catch (error) {
       console.error('Error:', error);
@@ -51,26 +51,27 @@ export default function CreateCapsulePage() {
   return (
     <div className="min-h-screen bg-deartomorrow-bg flex items-center justify-center px-4 py-12">
       <div className="max-w-xl w-full bg-deartomorrow-card rounded-2xl shadow-lg p-8 space-y-6">
+        <div className="flex justify-center">
+          <div className="flex gap-4">
+            <button
+              onClick={() => router.push('/')}
+              className="text-deartomorrow-secondary hover:underline"
+            >
+              Home
+            </button>
+            <button
+              onClick={() => router.push('/timeline')}
+              className="text-deartomorrow-secondary hover:underline"
+            >
+              Timeline
+            </button>
+          </div>
+        </div>
+
         {/* Title */}
         <h1 className="text-3xl font-bold text-deartomorrow-primary text-center">
           Create a Capsule
         </h1>
-
-        {/* Nav Buttons */}
-        <div className="flex justify-center gap-4">
-          <button
-            onClick={() => router.push('/')}
-            className="text-deartomorrow-secondary hover:underline"
-          >
-            Home
-          </button>
-          <button
-            onClick={() => router.push('/timeline')}
-            className="text-deartomorrow-secondary hover:underline"
-          >
-            Timeline
-          </button>
-        </div>
 
         {/* Form */}
         <form
