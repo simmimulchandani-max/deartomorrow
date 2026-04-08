@@ -93,7 +93,7 @@ export default function CreateMemoryPage() {
             const target = uploadTargets[index];
             const uploadFormData = new FormData();
             uploadFormData.append('cacheControl', '3600');
-            uploadFormData.append('', file);
+            uploadFormData.append('file', file, file.name);
 
             const uploadResponse = await fetch(target.signedUrl, {
               method: 'PUT',
