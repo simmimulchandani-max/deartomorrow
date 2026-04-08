@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateId } from '@/lib/generateId';
 import { buildMemoryPath } from '@/lib/memoryPaths';
-import { getSupabaseClient } from '@/lib/supabaseClient';
 
 const STORAGE_KEY = 'dear-tomorrow-memories';
 const NAV_BUTTON_CLASS =
@@ -70,6 +69,7 @@ export default function CreateMemoryPage() {
           uploads?: Array<{
             fileName: string;
             contentType: string;
+            signedUrl: string;
             path: string;
             token: string;
             publicUrl: string;
@@ -88,23 +88,24 @@ export default function CreateMemoryPage() {
           throw new Error('Could not prepare every attachment for upload.');
         }
 
-        const supabase = getSupabaseClient();
-
         const uploadResults = await Promise.all(
           selectedFiles.map(async (file, index) => {
             const target = uploadTargets[index];
-            const { error } = await supabase.storage
-              .from('dear tomorrow')
-              .uploadToSignedUrl(target.path, target.token, file, {
-                cacheControl: '3600',
-                contentType: file.type || target.contentType || 'application/octet-stream',
-              });
+            const uploadFormData = new FormData();
+            uploadFormData.append('cacheControl', '3600');
+            uploadFormData.append('', file);
 
-            if (error) {
+            const uploadResponse = await fetch(target.signedUrl, {
+              method: 'PUT',
+              body: uploadFormData,
+            });
+
+            if (!uploadResponse.ok) {
+              const errorText = await uploadResponse.text();
               return {
                 ok: false as const,
                 fileName: file.name,
-                error: error.message,
+                error: errorText || 'Upload failed',
               };
             }
 
