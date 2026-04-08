@@ -37,37 +37,43 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdminClient();
     const passwordHash = password ? hashMemoryPassword(password) : null;
     const uploadedMedia: Array<{ path: string; publicUrl: string }> = [];
+    const uploadWarnings: string[] = [];
 
     try {
       for (const file of files) {
-        const extension = file.name.includes(".") ? file.name.split(".").pop() : undefined;
-        const safeExtension = extension?.replace(/[^a-zA-Z0-9]/g, "") || "file";
-        const storagePath = `memories/${id}/${Date.now()}-${generateId()}.${safeExtension}`;
-        const fileBytes = new Uint8Array(await file.arrayBuffer());
+        try {
+          const extension = file.name.includes(".") ? file.name.split(".").pop() : undefined;
+          const safeExtension = extension?.replace(/[^a-zA-Z0-9]/g, "") || "file";
+          const storagePath = `memories/${id}/${Date.now()}-${generateId()}.${safeExtension}`;
+          const fileBytes = new Uint8Array(await file.arrayBuffer());
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from(SUPABASE_STORAGE_BUCKET)
-          .upload(storagePath, fileBytes, {
-            cacheControl: "3600",
-            contentType: file.type || "application/octet-stream",
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from(SUPABASE_STORAGE_BUCKET)
+            .upload(storagePath, fileBytes, {
+              cacheControl: "3600",
+              contentType: file.type || "application/octet-stream",
+            });
+
+          if (uploadError) {
+            throw new Error(uploadError.message);
+          }
+
+          const { data: publicUrlData } = supabase.storage
+            .from(SUPABASE_STORAGE_BUCKET)
+            .getPublicUrl(uploadData.path);
+
+          if (!publicUrlData.publicUrl) {
+            throw new Error("Failed to generate a public URL for the uploaded media.");
+          }
+
+          uploadedMedia.push({
+            path: uploadData.path,
+            publicUrl: publicUrlData.publicUrl,
           });
-
-        if (uploadError) {
-          throw new Error(uploadError.message);
+        } catch (uploadError) {
+          console.error("Shared memory media upload error:", uploadError);
+          uploadWarnings.push(file.name || "One attachment");
         }
-
-        const { data: publicUrlData } = supabase.storage
-          .from(SUPABASE_STORAGE_BUCKET)
-          .getPublicUrl(uploadData.path);
-
-        if (!publicUrlData.publicUrl) {
-          throw new Error("Failed to generate a public URL for the uploaded media.");
-        }
-
-        uploadedMedia.push({
-          path: uploadData.path,
-          publicUrl: publicUrlData.publicUrl,
-        });
       }
 
       const mediaUrls = uploadedMedia.map((item) => item.publicUrl);
@@ -102,6 +108,10 @@ export async function POST(request: Request) {
             ...insertedMemory,
             media_urls: mediaUrls,
           },
+          warning:
+            uploadWarnings.length > 0
+              ? `Created the memory, but couldn't upload ${uploadWarnings.length} attachment${uploadWarnings.length === 1 ? "" : "s"}.`
+              : undefined,
         },
         { status: 201 }
       );

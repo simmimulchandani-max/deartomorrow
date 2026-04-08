@@ -6,6 +6,7 @@ import { generateId } from '@/lib/generateId';
 import { buildMemoryPath } from '@/lib/memoryPaths';
 
 const STORAGE_KEY = 'dear-tomorrow-memories';
+const MAX_TOTAL_UPLOAD_BYTES = 4 * 1024 * 1024;
 const NAV_BUTTON_CLASS =
   'px-4 py-2 rounded-full bg-[#f7c7b6] border border-[#e7b6a4] shadow text-[#4a3c31] hover:bg-[#f4bba8]';
 
@@ -19,6 +20,7 @@ export default function CreateMemoryPage() {
   const [submitted, setSubmitted] = useState(false);
   const [createdMemoryPath, setCreatedMemoryPath] = useState<string | null>(null);
   const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
+  const [submissionWarning, setSubmissionWarning] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -34,6 +36,20 @@ export default function CreateMemoryPage() {
     try {
       const memoryId = generateId();
       const selectedFiles = fileInputRef.current?.files ? Array.from(fileInputRef.current.files) : [];
+      const uploadableFiles: File[] = [];
+      const skippedFiles: string[] = [];
+      let totalUploadBytes = 0;
+
+      for (const file of selectedFiles) {
+        if (totalUploadBytes + file.size > MAX_TOTAL_UPLOAD_BYTES) {
+          skippedFiles.push(file.name);
+          continue;
+        }
+
+        uploadableFiles.push(file);
+        totalUploadBytes += file.size;
+      }
+
       const payload = {
         title: title.trim(),
         message: message.trim(),
@@ -51,7 +67,7 @@ export default function CreateMemoryPage() {
       formData.append('message', payload.message);
       formData.append('unlockDate', payload.unlockDate);
       formData.append('password', payload.password);
-      selectedFiles.forEach((file) => {
+      uploadableFiles.forEach((file) => {
         formData.append('media', file);
       });
 
@@ -69,6 +85,7 @@ export default function CreateMemoryPage() {
           media_url?: string | null;
           media_urls?: string[];
         } | null;
+        warning?: string;
       } | null = null;
 
       if (responseText) {
@@ -81,6 +98,7 @@ export default function CreateMemoryPage() {
               media_url?: string | null;
               media_urls?: string[];
             } | null;
+            warning?: string;
           };
         } catch {
           createPayload = null;
@@ -133,6 +151,13 @@ export default function CreateMemoryPage() {
       setPassword('');
       if (fileInputRef.current) fileInputRef.current.value = '';
       setSelectedFileNames([]);
+      const warnings = [
+        createPayload?.warning,
+        skippedFiles.length > 0
+          ? `Created the memory, but skipped ${skippedFiles.length} attachment${skippedFiles.length === 1 ? '' : 's'} because mobile browsers often reject uploads over 4 MB total.`
+          : null,
+      ].filter(Boolean);
+      setSubmissionWarning(warnings.join(' '));
       setCreatedMemoryPath(buildMemoryPath(memoryId));
       setSubmitted(true);
     } catch (error) {
@@ -161,6 +186,11 @@ export default function CreateMemoryPage() {
           <p className="text-gray-600">
             Choose where you want to go next.
           </p>
+          {submissionWarning ? (
+            <p className="rounded-2xl bg-[#fff4dc] px-4 py-3 text-sm text-[#6c5630]">
+              {submissionWarning}
+            </p>
+          ) : null}
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
             <button
               type="button"
