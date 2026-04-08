@@ -1,8 +1,7 @@
 import "server-only";
 
+import { getStorageBucketName } from "@/lib/storageBucket";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
-
-const SUPABASE_STORAGE_BUCKET = "dear tomorrow";
 
 type RawMemoryRecord = {
   id: string;
@@ -109,7 +108,8 @@ export async function getMemoryPasswordHash(memoryId: string) {
 async function listMemoryMediaUrls(memoryId: string) {
   const supabase = getSupabaseAdminClient();
   const folder = `memories/${memoryId}`;
-  const { data, error } = await supabase.storage.from(SUPABASE_STORAGE_BUCKET).list(folder, {
+  const storageBucket = getStorageBucketName();
+  const { data, error } = await supabase.storage.from(storageBucket).list(folder, {
     limit: 100,
     sortBy: {
       column: "name",
@@ -125,7 +125,7 @@ async function listMemoryMediaUrls(memoryId: string) {
     .filter((item) => item.name)
     .map((item) => {
       const { data: publicUrlData } = supabase.storage
-        .from(SUPABASE_STORAGE_BUCKET)
+        .from(storageBucket)
         .getPublicUrl(`${folder}/${item.name}`);
 
       return publicUrlData.publicUrl;

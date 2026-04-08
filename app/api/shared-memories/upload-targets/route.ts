@@ -1,7 +1,6 @@
 import { generateId } from "@/lib/generateId";
+import { getStorageBucketName } from "@/lib/storageBucket";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
-
-const SUPABASE_STORAGE_BUCKET = "dear tomorrow";
 
 type UploadTargetsRequest = {
   id?: string;
@@ -30,6 +29,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = getSupabaseAdminClient();
+    const storageBucket = getStorageBucketName();
     const uploads = await Promise.all(
       files.map(async (file) => {
         const fileName = typeof file.name === "string" ? file.name.trim() : "";
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
         const storagePath = `memories/${id}/${Date.now()}-${generateId()}.${getFileExtension(fileName)}`;
         const { data, error } = await supabase.storage
-          .from(SUPABASE_STORAGE_BUCKET)
+          .from(storageBucket)
           .createSignedUploadUrl(storagePath);
 
         if (error || !data) {
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
         }
 
         const { data: publicUrlData } = supabase.storage
-          .from(SUPABASE_STORAGE_BUCKET)
+          .from(storageBucket)
           .getPublicUrl(storagePath);
 
         return {

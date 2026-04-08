@@ -1,6 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabaseClient";
-
-const SUPABASE_STORAGE_BUCKET = "dear tomorrow";
+import { getStorageBucketName } from "@/lib/storageBucket";
 
 type RawMemoryRecord = {
   id: string;
@@ -61,7 +60,8 @@ export async function getMemoryById(memoryId: string): Promise<SharedMemory | nu
 async function listMemoryMediaUrls(memoryId: string) {
   const supabase = getSupabaseClient();
   const folder = `memories/${memoryId}`;
-  const { data, error } = await supabase.storage.from(SUPABASE_STORAGE_BUCKET).list(folder, {
+  const storageBucket = getStorageBucketName();
+  const { data, error } = await supabase.storage.from(storageBucket).list(folder, {
     limit: 100,
     sortBy: {
       column: "name",
@@ -77,7 +77,7 @@ async function listMemoryMediaUrls(memoryId: string) {
     .filter((item) => item.name)
     .map((item) => {
       const { data: publicUrlData } = supabase.storage
-        .from(SUPABASE_STORAGE_BUCKET)
+        .from(storageBucket)
         .getPublicUrl(`${folder}/${item.name}`);
 
       return publicUrlData.publicUrl;

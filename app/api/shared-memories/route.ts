@@ -1,8 +1,7 @@
 import { hashMemoryPassword } from "@/lib/memorySecurity";
 import { generateId } from "@/lib/generateId";
+import { getStorageBucketName } from "@/lib/storageBucket";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
-
-const SUPABASE_STORAGE_BUCKET = "dear tomorrow";
 
 function isValidDateString(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -50,6 +49,7 @@ export async function POST(request: Request) {
         .filter((value): value is File => value instanceof File && value.size > 0);
 
       const supabase = getSupabaseAdminClient();
+      const storageBucket = getStorageBucketName();
       const uploadedMedia: Array<{ path: string; publicUrl: string }> = [];
 
       try {
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
             const fileBytes = new Uint8Array(await file.arrayBuffer());
 
             const { data: uploadData, error: uploadError } = await supabase.storage
-              .from(SUPABASE_STORAGE_BUCKET)
+              .from(storageBucket)
               .upload(storagePath, fileBytes, {
                 cacheControl: "3600",
                 contentType: file.type || "application/octet-stream",
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
             }
 
             const { data: publicUrlData } = supabase.storage
-              .from(SUPABASE_STORAGE_BUCKET)
+              .from(storageBucket)
               .getPublicUrl(uploadData.path);
 
             if (!publicUrlData.publicUrl) {
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
       } catch (error) {
         if (uploadedMedia.length > 0) {
           await supabase.storage
-            .from(SUPABASE_STORAGE_BUCKET)
+            .from(storageBucket)
             .remove(uploadedMedia.map((item) => item.path));
         }
 
