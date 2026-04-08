@@ -4,9 +4,9 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateId } from '@/lib/generateId';
 import { buildMemoryPath } from '@/lib/memoryPaths';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 const STORAGE_KEY = 'dear-tomorrow-memories';
-const MAX_TOTAL_UPLOAD_BYTES = 4 * 1024 * 1024;
 const NAV_BUTTON_CLASS =
   'px-4 py-2 rounded-full bg-[#f7c7b6] border border-[#e7b6a4] shadow text-[#4a3c31] hover:bg-[#f4bba8]';
 
@@ -36,20 +36,6 @@ export default function CreateMemoryPage() {
     try {
       const memoryId = generateId();
       const selectedFiles = fileInputRef.current?.files ? Array.from(fileInputRef.current.files) : [];
-      const uploadableFiles: File[] = [];
-      const skippedFiles: string[] = [];
-      let totalUploadBytes = 0;
-
-      for (const file of selectedFiles) {
-        if (totalUploadBytes + file.size > MAX_TOTAL_UPLOAD_BYTES) {
-          skippedFiles.push(file.name);
-          continue;
-        }
-
-        uploadableFiles.push(file);
-        totalUploadBytes += file.size;
-      }
-
       const payload = {
         title: title.trim(),
         message: message.trim(),
@@ -61,19 +47,99 @@ export default function CreateMemoryPage() {
         throw new Error('Title, message, and unlock date are required');
       }
 
-      const formData = new FormData();
-      formData.append('id', memoryId);
-      formData.append('title', payload.title);
-      formData.append('message', payload.message);
-      formData.append('unlockDate', payload.unlockDate);
-      formData.append('password', payload.password);
-      uploadableFiles.forEach((file) => {
-        formData.append('media', file);
-      });
+      let uploadedMediaUrls: string[] = [];
+      const failedUploads: string[] = [];
+
+      if (selectedFiles.length > 0) {
+        const uploadTargetResponse = await fetch('/api/shared-memories/upload-targets', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: memoryId,
+            files: selectedFiles.map((file) => ({
+              name: file.name,
+              type: file.type,
+            })),
+          }),
+        });
+
+        const uploadTargetPayload = (await uploadTargetResponse.json()) as {
+          error?: string;
+          uploads?: Array<{
+            fileName: string;
+            contentType: string;
+            path: string;
+            token: string;
+            publicUrl: string;
+          }>;
+        };
+
+        if (!uploadTargetResponse.ok) {
+          throw new Error(uploadTargetPayload.error ?? 'Failed to prepare uploads');
+        }
+
+        const uploadTargets = Array.isArray(uploadTargetPayload.uploads)
+          ? uploadTargetPayload.uploads
+          : [];
+
+        if (uploadTargets.length !== selectedFiles.length) {
+          throw new Error('Could not prepare every attachment for upload.');
+        }
+
+        const supabase = getSupabaseClient();
+
+        const uploadResults = await Promise.all(
+          selectedFiles.map(async (file, index) => {
+            const target = uploadTargets[index];
+            const { error } = await supabase.storage
+              .from('dear tomorrow')
+              .uploadToSignedUrl(target.path, target.token, file, {
+                cacheControl: '3600',
+                contentType: file.type || target.contentType || 'application/octet-stream',
+              });
+
+            if (error) {
+              return {
+                ok: false as const,
+                fileName: file.name,
+                error: error.message,
+              };
+            }
+
+            return {
+              ok: true as const,
+              fileName: file.name,
+              publicUrl: target.publicUrl,
+            };
+          })
+        );
+
+        uploadedMediaUrls = uploadResults
+          .filter((result): result is { ok: true; fileName: string; publicUrl: string } => result.ok)
+          .map((result) => result.publicUrl);
+
+        failedUploads.push(
+          ...uploadResults
+            .filter((result): result is { ok: false; fileName: string; error: string } => !result.ok)
+            .map((result) => result.fileName)
+        );
+      }
 
       const createResponse = await fetch('/api/shared-memories', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: memoryId,
+          title: payload.title,
+          message: payload.message,
+          unlockDate: payload.unlockDate,
+          password: payload.password,
+          mediaUrls: uploadedMediaUrls,
+        }),
       });
 
       const responseText = await createResponse.text();
@@ -85,7 +151,6 @@ export default function CreateMemoryPage() {
           media_url?: string | null;
           media_urls?: string[];
         } | null;
-        warning?: string;
       } | null = null;
 
       if (responseText) {
@@ -98,7 +163,6 @@ export default function CreateMemoryPage() {
               media_url?: string | null;
               media_urls?: string[];
             } | null;
-            warning?: string;
           };
         } catch {
           createPayload = null;
@@ -151,13 +215,11 @@ export default function CreateMemoryPage() {
       setPassword('');
       if (fileInputRef.current) fileInputRef.current.value = '';
       setSelectedFileNames([]);
-      const warnings = [
-        createPayload?.warning,
-        skippedFiles.length > 0
-          ? `Created the memory, but skipped ${skippedFiles.length} attachment${skippedFiles.length === 1 ? '' : 's'} because mobile browsers often reject uploads over 4 MB total.`
-          : null,
-      ].filter(Boolean);
-      setSubmissionWarning(warnings.join(' '));
+      setSubmissionWarning(
+        failedUploads.length > 0
+          ? `Created the memory, but ${failedUploads.length} attachment${failedUploads.length === 1 ? '' : 's'} could not be uploaded.`
+          : null
+      );
       setCreatedMemoryPath(buildMemoryPath(memoryId));
       setSubmitted(true);
     } catch (error) {
