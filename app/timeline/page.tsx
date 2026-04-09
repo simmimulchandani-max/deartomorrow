@@ -36,7 +36,7 @@ function formatUnlockDate(unlockDate: string | null) {
 
 function WaitingWaveCard({ label = 'Waiting to bloom' }: { label?: string }) {
   return (
-    <div className="mx-auto h-36 w-28 overflow-hidden rounded-[1rem] border border-white/70 bg-[linear-gradient(180deg,_#f7efe4_0%,_#efe6d8_34%,_#dcecf3_70%,_#cfe3ec_100%)] shadow-sm">
+    <div className="h-36 w-full overflow-hidden rounded-[1rem] border border-white/70 bg-[linear-gradient(180deg,_#f7efe4_0%,_#efe6d8_34%,_#dcecf3_70%,_#cfe3ec_100%)] shadow-sm">
       <div className="relative h-full w-full">
         <div className="absolute inset-x-0 bottom-0 h-[58%] bg-[linear-gradient(180deg,_rgba(196,223,235,0.92)_0%,_rgba(176,210,226,0.98)_100%)]" />
         <div className="absolute inset-x-[-6%] bottom-[34%] h-7 rounded-[100%] bg-white/80 blur-[0.5px]" />
@@ -45,7 +45,7 @@ function WaitingWaveCard({ label = 'Waiting to bloom' }: { label?: string }) {
         <div className="absolute inset-x-[-14%] bottom-[7%] h-10 rounded-[100%] bg-[#c8e0ea]" />
         <div className="absolute inset-x-[-8%] bottom-[1%] h-7 rounded-[100%] bg-white/72" />
 
-        <div className="absolute inset-x-0 bottom-3 px-2 text-center">
+        <div className="absolute inset-x-0 bottom-3 px-3 text-center">
           <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[#6f7f87]">
             {label}
           </p>

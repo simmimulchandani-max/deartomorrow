@@ -303,119 +303,120 @@ export default function CreateMemoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F0E6] flex flex-col items-center p-6">
-      <div className="w-full max-w-4xl mb-8 space-y-4">
-        <div className="flex justify-end">
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => router.push('/')}
-              className={NAV_BUTTON_CLASS}
-            >
-              Home
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push('/timeline')}
-              className={NAV_BUTTON_CLASS}
-            >
-              Timeline
-            </button>
-          </div>
-        </div>
+  <div className="min-h-screen bg-[#F5F0E6] flex flex-col items-center px-6 pt-16 pb-10">
+    
+    {/* Header */}
+    <div className="w-full max-w-2xl text-center space-y-4 mb-10">
+      <span className="text-sm font-semibold text-gray-500 tracking-[0.16em]">
+        CREATE MEMORY
+      </span>
 
-        <div className="space-y-2">
-          <span className="text-sm font-semibold text-gray-500">CREATE MEMORY</span>
-          <h1 className="text-4xl font-bold leading-tight">Start a memory for tomorrow.</h1>
-          <p className="text-gray-600 max-w-md">
-            Fill in the details below to create a memory that you can revisit later. Add photos, videos, and a message to keep it special.
-          </p>
-        </div>
-      </div>
+      <h1 className="text-4xl font-bold leading-tight text-[#4a3c31]">
+        Start a memory for tomorrow.
+      </h1>
 
-      <div className="w-full max-w-3xl bg-gray-100 rounded-3xl p-10 space-y-6 shadow">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block mb-2 font-medium text-gray-700">TITLE</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
-            />
-          </div>
-
-          <div>
-            <label className="block mb-2 font-medium text-gray-700">MESSAGE</label>
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className="w-full p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 h-32"
-            />
-          </div>
-
-          <div>
-            <label className="block mb-2 font-medium text-gray-700">PHOTOS OR VIDEOS</label>
-            <div
-              className="w-full border-2 border-dashed border-gray-300 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-gray-400"
-              onClick={handleFileClick}
-            >
-              <p className="text-gray-500">Upload photos or videos</p>
-              <input
-                type="file"
-                multiple
-                accept="image/*,video/*"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </div>
-            {selectedFileNames.length > 0 ? (
-              <div className="mt-3 space-y-2">
-                {selectedFileNames.map((fileName) => (
-                  <p
-                    key={fileName}
-                    className="text-sm text-gray-600 break-all"
-                  >
-                    {fileName}
-                  </p>
-                ))}
-              </div>
-            ) : null}
-          </div>
-
-          <div>
-            <label className="block mb-2 font-medium text-gray-700">UNLOCK DATE</label>
-            <input
-              type="date"
-              value={unlockDate}
-              onChange={(e) => setUnlockDate(e.target.value)}
-              className="w-full p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
-            />
-          </div>
-
-          <div>
-            <label className="block mb-2 font-medium text-gray-700">
-              PASSWORD (OPTIONAL)
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
-              placeholder="Protect this shared memory with a password"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-2 inline-flex min-h-14 w-full items-center justify-center rounded-full bg-[#f7c7b6] px-8 text-base font-semibold text-[#4a3c31] transition hover:bg-[#f4bba8] disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {loading ? 'Creating...' : 'Create Memory'}
-          </button>
-        </form>
-      </div>
+      <p className="text-gray-600">
+        Fill in the details below to create a memory you can revisit later.
+        Add photos, videos, and a message to keep it special.
+      </p>
     </div>
-  );
+
+    {/* Form Card */}
+    <div className="w-full max-w-2xl bg-gray-100 rounded-3xl p-8 sm:p-10 space-y-6 shadow-md">
+      <form onSubmit={handleSubmit} className="space-y-6">
+
+        {/* TITLE */}
+        <div>
+          <label className="block mb-2 font-medium text-gray-700">TITLE</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+          />
+        </div>
+
+        {/* MESSAGE */}
+        <div>
+          <label className="block mb-2 font-medium text-gray-700">MESSAGE</label>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            className="w-full p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 h-32"
+          />
+        </div>
+
+        {/* MEDIA */}
+        <div>
+          <label className="block mb-2 font-medium text-gray-700">
+            PHOTOS OR VIDEOS
+          </label>
+
+          <div
+            className="w-full border-2 border-dashed border-gray-300 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition"
+            onClick={handleFileClick}
+          >
+            <p className="text-gray-500">Upload photos or videos</p>
+          </div>
+
+          <input
+            type="file"
+            multiple
+            accept="image/*,video/*"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+          />
+
+          {selectedFileNames.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {selectedFileNames.map((fileName) => (
+                <p key={fileName} className="text-sm text-gray-600 break-all">
+                  {fileName}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* UNLOCK DATE */}
+        <div>
+          <label className="block mb-2 font-medium text-gray-700">
+            UNLOCK DATE
+          </label>
+          <input
+            type="date"
+            value={unlockDate}
+            onChange={(e) => setUnlockDate(e.target.value)}
+            className="w-full p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+          />
+        </div>
+
+        {/* PASSWORD */}
+        <div>
+          <label className="block mb-2 font-medium text-gray-700">
+            PASSWORD (OPTIONAL)
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+            placeholder="Protect this shared memory with a password"
+          />
+        </div>
+
+        {/* SUBMIT */}
+        <button
+          type="submit"
+          disabled={loading}
+          className="mt-2 inline-flex min-h-14 w-full items-center justify-center rounded-full bg-[#f7c7b6] px-8 text-base font-semibold text-[#4a3c31] transition hover:bg-[#f4bba8] disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {loading ? 'Creating...' : 'Create Memory'}
+        </button>
+      </form>
+    </div>
+  </div>
+);
+
 }
