@@ -55,11 +55,11 @@ export default function AboutPage() {
             still becoming.
           </p>
 
-          <div className="mt-10 overflow-hidden rounded-[2rem] border border-white/70 bg-white/60 shadow-inner">
+          <div className="mx-auto mt-10 w-full max-w-xs overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/60 p-6 shadow-inner sm:max-w-sm">
             <img
-              src="https://placehold.co/1200x700?text=Until+Tomorrow+Hero+Image"
-              alt="Placeholder hero image for Until Tomorrow showing a nostalgic, reflective moment"
-              className="h-auto w-full object-cover"
+              src="/favicon.png"
+              alt="Until Tomorrow favicon"
+              className="mx-auto h-32 w-32 object-contain sm:h-40 sm:w-40"
             />
           </div>
         </section>

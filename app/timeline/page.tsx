@@ -1,11 +1,13 @@
 'use client';
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import CountdownText from "@/components/CountdownText";
 import { buildMemoryPath } from "@/lib/memoryPaths";
 import UnlockModal from "@/components/UnlockModal";
+import { getSupabaseClient } from "@/lib/supabaseClient";
+import SoftLoginCelebration from "@/components/SoftLoginCelebration";
 
 const STORAGE_KEY = "dear-tomorrow-memories";
 
@@ -71,11 +73,77 @@ function buildShareLinks(memory: MemoryRecord) {
 
 export default function TimelinePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const supabase = useMemo(() => getSupabaseClient(), []);
   const [memories, setMemories] = useState<MemoryRecord[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState<MemoryRecord | null>(null);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [showCelebration, setShowCelebration] = useState(
+    searchParams.get("celebrate") === "1"
+  );
 
   useEffect(() => {
+    if (!showCelebration) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShowCelebration(false);
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.delete("celebrate");
+      window.history.replaceState({}, "", nextUrl.pathname + nextUrl.search);
+    }, 1400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [showCelebration]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function requireSession() {
+      // Protect this route by checking for an authenticated Supabase session.
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!isActive) {
+        return;
+      }
+
+      if (!session) {
+        router.replace("/");
+        return;
+      }
+
+      setIsCheckingSession(false);
+    }
+
+    void requireSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (!isActive) {
+          return;
+        }
+
+        if (!session) {
+          router.replace("/");
+        }
+      }
+    );
+
+    return () => {
+      isActive = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, [router, supabase]);
+
+  useEffect(() => {
+    if (isCheckingSession) {
+      return;
+    }
+
     function loadMemories() {
       try {
         const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -102,7 +170,7 @@ export default function TimelinePage() {
     return () => {
       window.removeEventListener("storage", loadMemories);
     };
-  }, []);
+  }, [isCheckingSession]);
 
   const summary = useMemo(() => {
     const unlockedCount = memories.filter((memory) =>
@@ -144,8 +212,34 @@ export default function TimelinePage() {
     setSelectedMemory(null);
   }
 
+  async function handleLogout() {
+    // Clear the current Supabase auth session, then return to the homepage.
+    await supabase.auth.signOut();
+    router.replace("/");
+  }
+
+  if (isCheckingSession) {
+    return (
+      <main className="min-h-screen bg-[#F5F0E6] px-6 py-12 sm:py-16">
+        <section className="mx-auto flex w-full max-w-4xl flex-col gap-8">
+          <div className="w-full rounded-3xl bg-gray-100 px-8 py-16 text-center shadow">
+            <p className="text-sm uppercase tracking-[0.28em] text-gray-500">
+              Checking session
+            </p>
+            <p className="mt-4 text-lg leading-8 text-gray-600">
+              Making sure your timeline is ready for you.
+            </p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#F5F0E6] px-6 py-12 sm:py-16">
+      {/* Soft post-login animation */}
+      <SoftLoginCelebration active={showCelebration} />
+
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-8">
         <header className="w-full bg-gray-100 rounded-3xl p-10 space-y-6 shadow">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -158,22 +252,21 @@ export default function TimelinePage() {
                 Saved memories wait here until their date arrives. Unlocked notes
                 can be opened now, while future ones stay softly out of reach.
               </p>
+              {showCelebration ? (
+                <p className="inline-flex w-fit rounded-full border border-[#f0dbc9] bg-[#fff6ef] px-4 py-2 text-sm text-[#7b6658] shadow-sm">
+                  Your magic link worked. Welcome back.
+                </p>
+              ) : null}
             </div>
 
             <div className="flex flex-wrap gap-3">
+              {/* Timeline-specific action button */}
               <button
                 type="button"
-                onClick={() => router.push("/")}
-                className={NAV_BUTTON_CLASS}
+                onClick={handleLogout}
+                className={`${NAV_BUTTON_CLASS} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d79a87] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f5f0e6]`}
               >
-                Home
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/create")}
-                className={NAV_BUTTON_CLASS}
-              >
-                Create a Memory
+                Log Out
               </button>
             </div>
           </div>
@@ -370,7 +463,7 @@ export default function TimelinePage() {
           shareLinks={buildShareLinks(selectedMemory)}
           metaText={`Unlocked ${formatDate(
             selectedMemory.unlockDate
-          )} • Saved ${formatCreatedAt(selectedMemory.createdAt)}`}
+          )} - Saved ${formatCreatedAt(selectedMemory.createdAt)}`}
         />
       ) : null}
     </main>

@@ -1,5 +1,9 @@
+"use client";
+
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Playfair_Display } from "next/font/google";
 import Link from "next/link";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 
 const brandFont = Playfair_Display({
   subsets: ["latin"],
@@ -7,8 +11,88 @@ const brandFont = Playfair_Display({
 });
 
 export default function Home() {
+  const supabase = useMemo(() => getSupabaseClient(), []);
+  const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSentLink, setHasSentLink] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [hasSession, setHasSession] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadSession() {
+      // Read the current Supabase session so logged-in visitors can go straight to their timeline.
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!isActive) {
+        return;
+      }
+
+      setHasSession(Boolean(session));
+      setIsCheckingSession(false);
+    }
+
+    void loadSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (!isActive) {
+          return;
+        }
+
+        setHasSession(Boolean(session));
+        setIsCheckingSession(false);
+      }
+    );
+
+    return () => {
+      isActive = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  async function handleMagicLinkLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!email.trim()) {
+      setErrorMessage("Please enter your email address.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage("");
+
+    try {
+      // Supabase magic-link login. The redirect points back to the App Router callback page.
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setHasSentLink(true);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "We couldn't send the login link just now. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(180deg,_#fff8e5_0%,_#f1e3c6_46%,_#d6ebf5_100%)] px-6 py-16">
+    <main className="relative flex min-h-[calc(100vh-9rem)] items-center justify-center overflow-hidden bg-[linear-gradient(180deg,_#fff8e5_0%,_#f1e3c6_46%,_#d6ebf5_100%)] px-6 py-16">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-8%] top-[-4%] h-72 w-72 rounded-full bg-white/55 blur-3xl" />
         <div className="absolute right-[-8%] top-[10%] h-96 w-96 rounded-full bg-[#f8d8c9]/35 blur-3xl" />
@@ -39,18 +123,71 @@ export default function Home() {
             you like a note tucked into the tide.
           </p>
 
-          <div className="mt-10 flex w-full max-w-md flex-col gap-4 sm:flex-row sm:justify-center">
+          <div className="mt-10 w-full max-w-md">
+            {/* Homepage login buttons and feedback states */}
+            {isCheckingSession ? (
+              <div className="rounded-[1.75rem] border border-white/70 bg-white/60 px-6 py-6 text-center shadow-inner">
+                <p className="text-elevated text-base leading-8 sm:text-lg">
+                  Checking your session...
+                </p>
+              </div>
+            ) : hasSession ? (
+              <div className="rounded-[1.75rem] border border-white/70 bg-white/60 px-5 py-5 shadow-inner">
+                <Link
+                  href="/timeline"
+                  className="inline-flex min-h-14 w-full items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-7 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] shadow-[0_16px_34px_rgba(74,60,49,0.12)] transition duration-300 hover:-translate-y-0.5 hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d79a87] focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
+                >
+                  Go to Timeline
+                </Link>
+              </div>
+            ) : hasSentLink ? (
+              <div className="rounded-[1.75rem] border border-white/70 bg-white/60 px-6 py-6 text-center shadow-inner">
+                {/* Friendly magic-link confirmation feedback */}
+                <p className="text-elevated text-base leading-8 sm:text-lg">
+                  Check your email — your link is on the way!
+                </p>
+              </div>
+            ) : (
+              <form
+                onSubmit={handleMagicLinkLogin}
+                className="rounded-[1.75rem] border border-white/70 bg-white/60 px-5 py-5 shadow-inner"
+              >
+                <label
+                  htmlFor="email"
+                  className="text-elevated block text-left text-sm font-semibold tracking-[0.18em]"
+                >
+                  Email Address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  className="mt-3 min-h-14 w-full rounded-full border border-white/80 bg-white/90 px-5 text-base text-[#4a3c31] outline-none transition placeholder:text-[#8a786d] focus:border-[#f0b79f] focus:ring-2 focus:ring-[#f0b79f]/50"
+                />
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="mt-4 inline-flex min-h-14 w-full items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-7 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] shadow-[0_16px_34px_rgba(74,60,49,0.12)] transition duration-300 hover:-translate-y-0.5 hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d79a87] focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isSubmitting ? "Sending Link..." : "Log In / Sign Up"}
+                </button>
+                {errorMessage ? (
+                  <p className="mt-4 text-sm leading-7 text-[#9b4d3a]">
+                    {errorMessage}
+                  </p>
+                ) : null}
+              </form>
+            )}
+          </div>
+          <div className="mt-4 flex w-full justify-center">
             <Link
-              href="/create"
-              className="inline-flex min-h-14 flex-1 items-center justify-center rounded-full bg-[#f7c7b6] px-7 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] transition duration-300 hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0b79f]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
+              href="/about"
+              className="inline-flex min-h-14 items-center justify-center rounded-full border border-white/70 bg-white/65 px-7 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] shadow-[0_12px_28px_rgba(88,110,124,0.08)] transition duration-300 hover:-translate-y-0.5 hover:bg-white/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d79a87] focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
             >
-              Create with Until Tomorrow {/* new branding text */}
-            </Link>
-            <Link
-              href="/timeline"
-              className="text-elevated inline-flex min-h-14 flex-1 items-center justify-center rounded-full border border-white/70 bg-white/55 px-7 text-sm font-semibold tracking-[0.18em] transition duration-300 hover:bg-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
-            >
-              View Until Tomorrow Timeline {/* new branding text */}
+              About Until Tomorrow
             </Link>
           </div>
         </div>

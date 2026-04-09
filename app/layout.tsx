@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Dancing_Script, Inter, Merriweather } from "next/font/google";
 import "./globals.css";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 
 const displayFont = Merriweather({
   variable: "--font-display",
@@ -52,7 +54,11 @@ export default function RootLayout({
       className={`${displayFont.variable} ${bodyFont.variable} ${handwrittenFont.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
-        {children}
+        {/* Shared navigation for consistent branding across pages */}
+        <SiteHeader />
+        <div className="flex-1">{children}</div>
+        {/* Shared footer for consistent branding across pages */}
+        <SiteFooter />
       </body>
     </html>
   );
