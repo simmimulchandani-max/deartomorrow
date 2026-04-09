@@ -18,11 +18,15 @@ const navLinks = [
 
 export default function SiteHeader() {
   const pathname = usePathname();
+  const isHomePage = pathname === "/";
+
+  const visibleLinks = isHomePage
+    ? navLinks.filter((link) => link.href === "/about")
+    : navLinks;
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/50 bg-[rgba(247,242,233,0.82)] backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-4">
-        {/* Shared brand mark and home link */}
         <Link
           href="/"
           className={`${brandFont.className} text-elevated inline-flex items-center gap-3 text-2xl leading-none transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d79a87] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f2e9]`}
@@ -39,9 +43,8 @@ export default function SiteHeader() {
           <span>Until Tomorrow</span>
         </Link>
 
-        {/* Shared navigation links */}
         <nav className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-          {navLinks.map((link) => {
+          {visibleLinks.map((link) => {
             const isActive =
               pathname === link.href ||
               (link.href !== "/" && pathname.startsWith(`${link.href}/`));
