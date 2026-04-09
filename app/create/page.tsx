@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateId } from '@/lib/generateId';
 import { buildMemoryPath } from '@/lib/memoryPaths';
@@ -21,28 +21,19 @@ export default function CreateMemoryPage() {
   const [createdMemoryPath, setCreatedMemoryPath] = useState<string | null>(null);
   const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
   const [submissionWarning, setSubmissionWarning] = useState<string | null>(null);
-  const [uploadDebugMessages, setUploadDebugMessages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Create memory form uses the server route for uploads and inserts.');
-    }
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
+    e.preventDefault();
+    setLoading(true);
 
-  const supabase = getSupabaseClient();
+    const supabase = getSupabaseClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  
     try {
-      setUploadDebugMessages([]);
       const memoryId = generateId();
       const selectedFiles = fileInputRef.current?.files ? Array.from(fileInputRef.current.files) : [];
       const payload = {
@@ -60,11 +51,6 @@ export default function CreateMemoryPage() {
       const failedUploads: string[] = [];
 
       if (selectedFiles.length > 0) {
-        setUploadDebugMessages((current) => [
-          ...current,
-          `Preparing ${selectedFiles.length} attachment${selectedFiles.length === 1 ? '' : 's'} for upload.`,
-        ]);
-
         const uploadTargetResponse = await fetch('/api/shared-memories/upload-targets', {
           method: 'POST',
           headers: {
@@ -96,11 +82,6 @@ export default function CreateMemoryPage() {
           throw new Error(uploadTargetPayload.error ?? 'Failed to prepare uploads');
         }
 
-        setUploadDebugMessages((current) => [
-          ...current,
-          'Received signed upload targets from the server.',
-        ]);
-
         const uploadTargets = Array.isArray(uploadTargetPayload.uploads)
           ? uploadTargetPayload.uploads
           : [];
@@ -112,10 +93,6 @@ export default function CreateMemoryPage() {
         const uploadResults = await Promise.all(
           selectedFiles.map(async (file, index) => {
             const target = uploadTargets[index];
-            setUploadDebugMessages((current) => [
-              ...current,
-              `Uploading ${file.name} (${file.type || 'unknown type'}, ${file.size} bytes).`,
-            ]);
             const uploadFormData = new FormData();
             uploadFormData.append('cacheControl', '3600');
             uploadFormData.append('file', file, file.name);
@@ -127,21 +104,12 @@ export default function CreateMemoryPage() {
 
             if (!uploadResponse.ok) {
               const errorText = await uploadResponse.text();
-              setUploadDebugMessages((current) => [
-                ...current,
-                `Upload failed for ${file.name}: ${uploadResponse.status} ${uploadResponse.statusText}${errorText ? ` - ${errorText}` : ''}`,
-              ]);
               return {
                 ok: false as const,
                 fileName: file.name,
                 error: errorText || 'Upload failed',
               };
             }
-
-            setUploadDebugMessages((current) => [
-              ...current,
-              `Upload succeeded for ${file.name}.`,
-            ]);
 
             return {
               ok: true as const,
@@ -204,8 +172,6 @@ export default function CreateMemoryPage() {
           createPayload = null;
         }
       }
-
-      console.log('Create memory response data:', createPayload);
 
       if (!createResponse.ok) {
         throw new Error(createPayload?.error ?? 'Failed to create memory');
@@ -289,15 +255,6 @@ export default function CreateMemoryPage() {
               {submissionWarning}
             </p>
           ) : null}
-          {uploadDebugMessages.length > 0 ? (
-            <div className="rounded-2xl bg-[#eef3f7] px-4 py-3 text-left text-sm text-[#32414d]">
-              {uploadDebugMessages.map((message, index) => (
-                <p key={`${message}-${index}`} className="break-words">
-                  {message}
-                </p>
-              ))}
-            </div>
-          ) : null}
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
             <button
               type="button"
@@ -347,7 +304,6 @@ export default function CreateMemoryPage() {
 
   return (
     <div className="min-h-screen bg-[#F5F0E6] flex flex-col items-center p-6">
-      {/* Top Section */}
       <div className="w-full max-w-4xl mb-8 space-y-4">
         <div className="flex justify-end">
           <div className="flex flex-wrap gap-3">
@@ -377,19 +333,8 @@ export default function CreateMemoryPage() {
         </div>
       </div>
 
-      {/* Form Card */}
       <div className="w-full max-w-3xl bg-gray-100 rounded-3xl p-10 space-y-6 shadow">
-        {uploadDebugMessages.length > 0 ? (
-          <div className="rounded-2xl bg-[#eef3f7] px-4 py-3 text-sm text-[#32414d]">
-            {uploadDebugMessages.map((message, index) => (
-              <p key={`${message}-${index}`} className="break-words">
-                {message}
-              </p>
-            ))}
-          </div>
-        ) : null}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* TITLE */}
           <div>
             <label className="block mb-2 font-medium text-gray-700">TITLE</label>
             <input
@@ -400,7 +345,6 @@ export default function CreateMemoryPage() {
             />
           </div>
 
-          {/* MESSAGE */}
           <div>
             <label className="block mb-2 font-medium text-gray-700">MESSAGE</label>
             <textarea
@@ -410,7 +354,6 @@ export default function CreateMemoryPage() {
             />
           </div>
 
-          {/* PHOTOS OR VIDEOS */}
           <div>
             <label className="block mb-2 font-medium text-gray-700">PHOTOS OR VIDEOS</label>
             <div
@@ -441,7 +384,6 @@ export default function CreateMemoryPage() {
             ) : null}
           </div>
 
-          {/* UNLOCK DATE */}
           <div>
             <label className="block mb-2 font-medium text-gray-700">UNLOCK DATE</label>
             <input
@@ -465,7 +407,6 @@ export default function CreateMemoryPage() {
             />
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
