@@ -34,6 +34,27 @@ function formatUnlockDate(unlockDate: string | null) {
   });
 }
 
+function WaitingWaveCard({ label = 'Waiting to bloom' }: { label?: string }) {
+  return (
+    <div className="mx-auto h-36 w-28 overflow-hidden rounded-[1rem] border border-white/70 bg-[linear-gradient(180deg,_#f7efe4_0%,_#efe6d8_34%,_#dcecf3_70%,_#cfe3ec_100%)] shadow-sm">
+      <div className="relative h-full w-full">
+        <div className="absolute inset-x-0 bottom-0 h-[58%] bg-[linear-gradient(180deg,_rgba(196,223,235,0.92)_0%,_rgba(176,210,226,0.98)_100%)]" />
+        <div className="absolute inset-x-[-6%] bottom-[34%] h-7 rounded-[100%] bg-white/80 blur-[0.5px]" />
+        <div className="absolute inset-x-[-12%] bottom-[24%] h-11 rounded-[100%] bg-[#dceef5]/95" />
+        <div className="absolute inset-x-[-10%] bottom-[15%] h-8 rounded-[100%] bg-white/88" />
+        <div className="absolute inset-x-[-14%] bottom-[7%] h-10 rounded-[100%] bg-[#c8e0ea]" />
+        <div className="absolute inset-x-[-8%] bottom-[1%] h-7 rounded-[100%] bg-white/72" />
+
+        <div className="absolute inset-x-0 bottom-3 px-2 text-center">
+          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[#6f7f87]">
+            {label}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TimelinePage() {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,31 +169,17 @@ export default function TimelinePage() {
                     key={card}
                     className="rounded-[1.75rem] border border-white/70 bg-gray-100 p-6 shadow-sm"
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h2 className="text-xl font-semibold text-[#4a3c31]">
-                          Your first memory
-                        </h2>
-                        <p className="mt-1 text-sm text-gray-500">
-                          Create something for your future self
-                        </p>
-                      </div>
-
-                      <div className="flex h-10 min-w-10 items-center justify-center rounded-full bg-white px-3 text-sm font-semibold text-[#4a3c31] shadow-sm">
-                        0
-                      </div>
+                    <div>
+                      <h2 className="text-xl font-semibold text-[#4a3c31]">
+                        Your first memory
+                      </h2>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Create something for your future self
+                      </p>
                     </div>
 
                     <div className="mt-5 rounded-[1.5rem] bg-white/70 p-4">
-                      <div className="mx-auto flex h-36 w-28 items-center justify-center rounded-[1rem] border border-white/70 bg-[linear-gradient(180deg,_#f7efe4_0%,_#efe6d8_52%,_#d8e8ef_100%)] shadow-sm">
-                        <div className="text-center">
-                          <div className="mx-auto h-10 w-10 rounded-full bg-white/70" />
-                          <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-gray-500">
-                            Waiting to bloom
-                          </p>
-                        </div>
-                      </div>
-
+                      <WaitingWaveCard />
                       <p className="mt-4 text-center text-xs text-gray-500">
                         Nothing planted yet
                       </p>
@@ -190,7 +197,7 @@ export default function TimelinePage() {
                 ))}
               </>
             ) : (
-              memories.map((memory, index) => {
+              memories.map((memory) => {
                 const ready = isReadyToUnlock(memory.unlock_date);
 
                 return (
@@ -198,31 +205,19 @@ export default function TimelinePage() {
                     key={memory.id}
                     className="rounded-[1.75rem] border border-white/70 bg-gray-100 p-6 shadow-sm"
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h2 className="text-xl font-semibold text-[#4a3c31]">
-                          {memory.title || 'Untitled Memory'}
-                        </h2>
-                        <p className="mt-1 text-sm text-gray-500">
-                          {ready ? 'Ready to unlock' : 'Waiting to bloom'}
-                        </p>
-                      </div>
-
-                      <div className="flex h-10 min-w-10 items-center justify-center rounded-full bg-white px-3 text-sm font-semibold text-[#4a3c31] shadow-sm">
-                        {index + 1}
-                      </div>
+                    <div>
+                      <h2 className="text-xl font-semibold text-[#4a3c31]">
+                        {memory.title || 'Untitled Memory'}
+                      </h2>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {ready ? 'Ready to unlock' : 'Waiting to bloom'}
+                      </p>
                     </div>
 
                     <div className="mt-5 rounded-[1.5rem] bg-white/70 p-4">
-                      <div className="mx-auto flex h-36 w-28 items-center justify-center rounded-[1rem] border border-white/70 bg-[linear-gradient(180deg,_#f7efe4_0%,_#efe6d8_45%,_#d7e8ef_100%)] shadow-sm">
-                        <div className="text-center px-3">
-                          <div className="mx-auto h-10 w-10 rounded-full bg-white/70" />
-                          <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-gray-500">
-                            Waiting to bloom
-                          </p>
-                        </div>
-                      </div>
-
+                      <WaitingWaveCard
+                        label={ready ? 'Ready to bloom' : 'Waiting to bloom'}
+                      />
                       <p className="mt-4 text-center text-xs text-gray-500">
                         Unlocks {formatUnlockDate(memory.unlock_date)}
                       </p>
