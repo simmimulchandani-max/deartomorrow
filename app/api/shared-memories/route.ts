@@ -14,6 +14,7 @@ type CreateSharedMemoryRequest = {
   unlockDate?: string;
   password?: string;
   mediaUrls?: string[];
+  userId?: string;
 };
 
 export async function POST(request: Request) {
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
     let unlockDate = "";
     let password = "";
     let mediaUrls: string[] = [];
-
+    let userId = "";
     if (contentType.includes("application/json")) {
       const body = (await request.json()) as CreateSharedMemoryRequest;
       id = typeof body.id === "string" && body.id.trim() ? body.id.trim() : generateId();
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
       message = body.message?.trim() ?? "";
       unlockDate = body.unlockDate?.trim() ?? "";
       password = body.password?.trim() ?? "";
+      userId = body.userId?.trim() ?? "";
       mediaUrls = Array.isArray(body.mediaUrls)
         ? body.mediaUrls.filter((item): item is string => typeof item === "string" && item.length > 0)
         : [];
@@ -118,16 +120,17 @@ export async function POST(request: Request) {
     const passwordHash = password ? hashMemoryPassword(password) : null;
     const mediaUrl = mediaUrls[0] ?? null;
     const { data, error } = await supabase
-      .from("memories")
-      .insert({
-        id,
-        title,
-        message,
-        unlock_date: unlockDate,
-        media_url: mediaUrl,
-        password_hash: passwordHash,
-      })
-      .select("id, title, message, unlock_date, media_url, created_at");
+    .from("memories")
+    .insert({
+      id,
+      title,
+      message,
+      unlock_date: unlockDate,
+      media_url: mediaUrl,
+      password_hash: passwordHash,
+      user_id: userId || null,
+    })
+    .select("id, title, message, unlock_date, media_url, created_at");
 
     if (error) {
       throw new Error(error.message);

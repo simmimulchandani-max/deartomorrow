@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateId } from '@/lib/generateId';
 import { buildMemoryPath } from '@/lib/memoryPaths';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 const STORAGE_KEY = 'dear-tomorrow-memories';
 const NAV_BUTTON_CLASS =
@@ -30,9 +31,16 @@ export default function CreateMemoryPage() {
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  e.preventDefault();
+  setLoading(true);
 
+  const supabase = getSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  
     try {
       setUploadDebugMessages([]);
       const memoryId = generateId();
@@ -64,6 +72,7 @@ export default function CreateMemoryPage() {
           },
           body: JSON.stringify({
             id: memoryId,
+            userId: user?.id ?? null,
             files: selectedFiles.map((file) => ({
               name: file.name,
               type: file.type,
@@ -164,6 +173,7 @@ export default function CreateMemoryPage() {
           message: payload.message,
           unlockDate: payload.unlockDate,
           password: payload.password,
+          userId: user?.id ?? null,
           mediaUrls: uploadedMediaUrls,
         }),
       });
