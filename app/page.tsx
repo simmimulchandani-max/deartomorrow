@@ -182,14 +182,7 @@ export default function Home() {
               </form>
             )}
           </div>
-          <div className="mt-4 flex w-full justify-center">
-            <Link
-              href="/about"
-              className="inline-flex min-h-14 items-center justify-center rounded-full border border-white/70 bg-white/65 px-7 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] shadow-[0_12px_28px_rgba(88,110,124,0.08)] transition duration-300 hover:-translate-y-0.5 hover:bg-white/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d79a87] focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
-            >
-              About Until Tomorrow
-            </Link>
-          </div>
+          
         </div>
       </section>
     </main>
