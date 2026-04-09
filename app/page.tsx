@@ -29,7 +29,7 @@ export default function Home() {
                 "0 2px 4px rgba(255,248,229,0.7), 0 6px 18px rgba(74,60,49,0.18)",
             }}
           >
-            Dear Tomorrow
+            Until Tomorrow {/* new branding text */}
           </h1>
           <p className="text-elevated mt-6 max-w-2xl text-lg leading-8 sm:text-xl">
             Leave something for your future self
@@ -44,13 +44,13 @@ export default function Home() {
               href="/create"
               className="inline-flex min-h-14 flex-1 items-center justify-center rounded-full bg-[#f7c7b6] px-7 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] transition duration-300 hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0b79f]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
             >
-              Create a Memory
+              Create with Until Tomorrow {/* new branding text */}
             </Link>
             <Link
               href="/timeline"
               className="text-elevated inline-flex min-h-14 flex-1 items-center justify-center rounded-full border border-white/70 bg-white/55 px-7 text-sm font-semibold tracking-[0.18em] transition duration-300 hover:bg-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
             >
-              View Timeline
+              View Until Tomorrow Timeline {/* new branding text */}
             </Link>
           </div>
         </div>

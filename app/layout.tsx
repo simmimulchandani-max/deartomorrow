@@ -20,8 +20,17 @@ const handwrittenFont = Dancing_Script({
 });
 
 export const metadata: Metadata = {
-  title: "Dear Tomorrow",
+  title: "Until Tomorrow", // new branding text
   description: "Leave something for your future self.",
+  applicationName: "Until Tomorrow", // new branding text
+  openGraph: {
+    title: "Until Tomorrow", // new branding text
+    description: "Leave something for your future self.",
+  },
+  twitter: {
+    title: "Until Tomorrow", // new branding text
+    description: "Leave something for your future self.",
+  },
   icons: {
     icon: "/favicon.png",
   },

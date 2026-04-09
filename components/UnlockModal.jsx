@@ -125,7 +125,7 @@ export default function UnlockModal({
 
     try {
       await navigator.share({
-        title: memory?.title || "Dear Tomorrow",
+        title: memory?.title || "Until Tomorrow", // new branding text
         text: memory?.message || "",
         url: shareUrl || window.location.href,
       });
