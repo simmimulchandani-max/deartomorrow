@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import { Caveat } from "next/font/google";
 import { buildMemoryPath } from "@/lib/memoryPaths";
@@ -48,37 +48,87 @@ function ShareIconButton({
   );
 }
 
-function BottomNavigation({ shareAction }: { shareAction: () => void }) {
+function TopRightMenu() {
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
+  function closeMenu() {
+    setIsOpen(false);
+  }
+
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[#eadfce] bg-[#F5F0E6]/95 px-4 py-3 backdrop-blur-sm">
-      <div className="mx-auto grid w-full max-w-3xl grid-cols-4 gap-2">
-        <Link
-          href="/"
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#f7c7b6] px-3 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] shadow transition hover:bg-[#f4bba8]"
-        >
-          Home
-        </Link>
-        <Link
-          href="/timeline"
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#f7c7b6] px-3 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] shadow transition hover:bg-[#f4bba8]"
-        >
-          Timeline
-        </Link>
-        <Link
-          href="/create"
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#f7c7b6] px-3 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] shadow transition hover:bg-[#f4bba8]"
-        >
-          Create Memory
-        </Link>
-        <button
-          type="button"
-          onClick={shareAction}
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#f7c7b6] px-3 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] shadow transition hover:bg-[#f4bba8]"
-        >
-          Share
-        </button>
-      </div>
-    </nav>
+    <div ref={menuRef} className="absolute right-4 top-4 z-30 sm:right-6 sm:top-6">
+      <button
+        type="button"
+        aria-label="Open menu"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((current) => !current)}
+        className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6]/95 text-[#4a3c31] shadow-md backdrop-blur-sm transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a3c31]"
+      >
+        <span className="sr-only">Menu</span>
+        <div className="flex flex-col gap-1.5">
+          <span className="block h-0.5 w-5 rounded-full bg-current" />
+          <span className="block h-0.5 w-5 rounded-full bg-current" />
+          <span className="block h-0.5 w-5 rounded-full bg-current" />
+        </div>
+      </button>
+
+      {isOpen ? (
+        <div className="mt-3 w-56 overflow-hidden rounded-3xl border border-[#eadfce] bg-[#F5F0E6]/95 p-2 shadow-[0_20px_50px_rgba(74,60,49,0.18)] backdrop-blur-md">
+          <Link
+            href="/"
+            onClick={closeMenu}
+            className="block rounded-2xl px-4 py-3 text-left text-sm font-semibold tracking-[0.08em] text-[#4a3c31] transition hover:bg-[#f7c7b6]"
+          >
+            Home
+          </Link>
+          <Link
+            href="/timeline"
+            onClick={closeMenu}
+            className="block rounded-2xl px-4 py-3 text-left text-sm font-semibold tracking-[0.08em] text-[#4a3c31] transition hover:bg-[#f7c7b6]"
+          >
+            Timeline
+          </Link>
+          <Link
+            href="/create"
+            onClick={closeMenu}
+            className="block rounded-2xl px-4 py-3 text-left text-sm font-semibold tracking-[0.08em] text-[#4a3c31] transition hover:bg-[#f7c7b6]"
+          >
+            Create Memory
+          </Link>
+          <Link
+            href="/about"
+            onClick={closeMenu}
+            className="block rounded-2xl px-4 py-3 text-left text-sm font-semibold tracking-[0.08em] text-[#4a3c31] transition hover:bg-[#f7c7b6]"
+          >
+            About
+          </Link>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -92,6 +142,8 @@ export default function MemoryPolaroid({
 }: MemoryPolaroidProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const totalItems = mediaUrls.length;
   const hasMedia = totalItems > 0;
 
@@ -159,6 +211,29 @@ export default function MemoryPolaroid({
     await handleCopyLink();
   }
 
+  async function handleDelete() {
+    const confirmDelete = window.confirm("Delete memory? This can't be undone.");
+    if (!confirmDelete) return;
+
+    try {
+      setIsDeleting(true);
+
+      const res = await fetch(`/api/memories/${memoryId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to delete");
+      }
+
+      window.location.href = "/timeline";
+    } catch (err) {
+      alert("Something went wrong deleting this memory.");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   function goToPrevious() {
     if (totalItems < 2) {
       return;
@@ -179,8 +254,9 @@ export default function MemoryPolaroid({
     <>
       <section className="relative isolate min-h-screen overflow-hidden bg-[#4a3c31]">
         <UnlockWaveBackground />
+        <TopRightMenu />
 
-        <div className="relative mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-6xl flex-col items-center justify-start px-4 pb-28 pt-2 text-center sm:px-6 sm:pb-32 sm:pt-6">
+        <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col items-center justify-start px-4 pb-16 pt-16 text-center sm:px-6 sm:pb-20 sm:pt-20">
           <div className="absolute left-1/2 top-[3%] h-[28rem] w-[30rem] -translate-x-1/2 rounded-full bg-[#F5F0E6]/76 blur-3xl" />
 
           <div className="relative z-10 flex w-full flex-col items-center">
@@ -189,7 +265,9 @@ export default function MemoryPolaroid({
             >
               {title}
             </h1>
+
             <p className="mt-2 text-sm font-medium text-white">{unlockDateLabel}</p>
+
             {!hasMedia ? (
               <p className="mt-2 max-w-md text-sm leading-7 text-[#4a3c31] sm:text-base">
                 A quiet piece of your story, saved here like something held
@@ -211,17 +289,17 @@ export default function MemoryPolaroid({
                           className="relative h-full w-full shrink-0 bg-[#f8f1e8]"
                         >
                           {isVideo(src) ? (
-                          <video
-                            src={src}
-                            controls
+                            <video
+                              src={src}
+                              controls
                               className="h-full w-full object-contain"
                             />
                           ) : (
                             <Image
                               src={src}
-                            alt={`${title} media ${index + 1}`}
-                            fill
-                            unoptimized
+                              alt={`${title} media ${index + 1}`}
+                              fill
+                              unoptimized
                               className="object-contain"
                             />
                           )}
@@ -314,12 +392,19 @@ export default function MemoryPolaroid({
               >
                 {copied ? "Link Copied" : "Copy Link"}
               </button>
+
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-red-300 bg-red-400 px-4 text-sm font-semibold tracking-[0.18em] text-white shadow transition hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
             </div>
           </div>
         </div>
       </section>
-
-      <BottomNavigation shareAction={handleNativeShare} />
     </>
   );
 }
