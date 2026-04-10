@@ -58,6 +58,8 @@ export default function MemoryPolaroid({
   const [activeIndex, setActiveIndex] = useState(0);
   const [copied, setCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const totalItems = mediaUrls.length;
   const hasMedia = totalItems > 0;
@@ -127,23 +129,25 @@ export default function MemoryPolaroid({
   }
 
   async function handleDelete() {
-    const confirmDelete = window.confirm("Delete memory? This can't be undone.");
-    if (!confirmDelete) return;
-
     try {
       setIsDeleting(true);
+      setDeleteError("");
 
       const res = await fetch(`/api/memories/${memoryId}`, {
         method: "DELETE",
       });
 
+      const data = await res.json().catch(() => null);
+
       if (!res.ok) {
-        throw new Error("Failed to delete");
+        throw new Error(data?.error || "Failed to delete memory.");
       }
 
       window.location.href = "/timeline";
     } catch (err) {
-      alert("Something went wrong deleting this memory.");
+      setDeleteError(
+        err instanceof Error ? err.message : "Something went wrong deleting this memory."
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -308,15 +312,61 @@ export default function MemoryPolaroid({
 
             <button
               type="button"
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-red-300 bg-red-400 px-4 text-sm font-semibold tracking-[0.18em] text-white shadow transition hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => {
+                setDeleteError("");
+                setShowDeleteModal(true);
+              }}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-red-300 bg-red-400 px-4 text-sm font-semibold tracking-[0.18em] text-white shadow transition hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              Delete
             </button>
           </div>
+
+          {deleteError ? (
+            <p className="mt-4 max-w-md rounded-2xl bg-[#F5F0E6]/90 px-4 py-3 text-sm text-[#8a3d2f] shadow">
+              {deleteError}
+            </p>
+          ) : null}
         </div>
       </div>
+
+      {showDeleteModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#4a3c31]/45 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[2rem] bg-[#F5F0E6] p-6 text-center shadow-[0_24px_80px_rgba(74,60,49,0.28)] sm:p-7">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#f7c7b6] text-3xl shadow-sm">
+              🗑️
+            </div>
+
+            <h2 className="text-2xl font-semibold text-[#4a3c31]">
+              Delete memory?
+            </h2>
+
+            <p className="mt-3 text-sm leading-7 text-[#6b5a4f] sm:text-base">
+              This can’t be undone. Once it’s gone, it’s gone.
+            </p>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#d8cfc4] bg-white px-5 text-sm font-semibold tracking-[0.08em] text-[#4a3c31] shadow-sm transition hover:bg-[#f8f1e8] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Keep It
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-red-300 bg-red-400 px-5 text-sm font-semibold tracking-[0.08em] text-white shadow transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isDeleting ? "Deleting..." : "Delete Forever"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

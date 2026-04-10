@@ -118,7 +118,11 @@ export async function listCapsules() {
   const store = await readStore();
   return [...store.capsules];
 }
-
+export async function deleteTimelineMemory(id: string) {
+  await updateStore((store) => {
+    store.timelineMemories = store.timelineMemories.filter((memory) => memory.id !== id);
+  });
+}
 export async function addMemory(
   input: Omit<Memory, "createdAt"> & {
     createdAt?: string;
