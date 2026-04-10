@@ -129,29 +129,34 @@ export default function MemoryPolaroid({
   }
 
   async function handleDelete() {
-    try {
-      setIsDeleting(true);
-      setDeleteError("");
+  try {
+    setIsDeleting(true);
+    setDeleteError("");
 
-      const res = await fetch(`/api/memories/${memoryId}`, {
-        method: "DELETE",
-      });
+    const res = await fetch(`/api/memories/${memoryId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
-      const data = await res.json().catch(() => null);
+    const data = await res.json().catch(() => null);
 
-      if (!res.ok) {
-        throw new Error(data?.error || "Failed to delete memory.");
-      }
-
-      window.location.href = "/timeline";
-    } catch (err) {
-      setDeleteError(
-        err instanceof Error ? err.message : "Something went wrong deleting this memory."
-      );
-    } finally {
-      setIsDeleting(false);
+    if (!res.ok) {
+      throw new Error(data?.error || "Failed to delete memory.");
     }
+
+    setShowDeleteModal(false);
+    window.location.href = "/timeline";
+  } catch (err) {
+    setDeleteError(
+      err instanceof Error ? err.message : "Something went wrong deleting this memory."
+    );
+    setShowDeleteModal(false);
+  } finally {
+    setIsDeleting(false);
   }
+}
 
   function goToPrevious() {
     if (totalItems < 2) {

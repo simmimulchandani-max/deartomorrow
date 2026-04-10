@@ -1,14 +1,11 @@
 import { deleteTimelineMemory } from "@/lib/store";
 
-type RouteContext = {
-  params: Promise<{
-    id: string;
-  }>;
-};
-
-export async function DELETE(_: Request, context: RouteContext) {
+export async function DELETE(
+  _request: Request,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { id } = await context.params;
+    const id = params?.id;
 
     if (!id) {
       return Response.json(
@@ -19,9 +16,10 @@ export async function DELETE(_: Request, context: RouteContext) {
 
     await deleteTimelineMemory(id);
 
-    return Response.json({ success: true });
+    return Response.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Delete memory error:", error);
+
     return Response.json(
       { error: "Failed to delete memory." },
       { status: 500 }
