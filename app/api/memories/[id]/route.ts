@@ -28,7 +28,12 @@ export async function DELETE(
     console.error("Delete memory error:", error);
 
     return Response.json(
-      { error: "Failed to delete memory." },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to delete memory.",
+      },
       { status: 500 }
     );
   }

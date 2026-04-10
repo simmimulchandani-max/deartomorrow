@@ -119,8 +119,18 @@ export async function listCapsules() {
   return [...store.capsules];
 }
 export async function deleteTimelineMemory(id: string) {
-  await updateStore((store) => {
-    store.timelineMemories = store.timelineMemories.filter((memory) => memory.id !== id);
+  return updateStore((store) => {
+    const beforeCount = store.timelineMemories.length;
+
+    store.timelineMemories = store.timelineMemories.filter(
+      (memory) => memory.id !== id
+    );
+
+    const afterCount = store.timelineMemories.length;
+
+    if (beforeCount === afterCount) {
+      throw new Error("Memory not found.");
+    }
   });
 }
 export async function addMemory(
