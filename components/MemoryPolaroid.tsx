@@ -1,8 +1,7 @@
 'use client';
 
-import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import confetti from "canvas-confetti";
 import { Caveat } from "next/font/google";
 import { buildMemoryPath } from "@/lib/memoryPaths";
@@ -45,90 +44,6 @@ function ShareIconButton({
     >
       {children}
     </a>
-  );
-}
-
-function TopRightMenu() {
-  const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, []);
-
-  function closeMenu() {
-    setIsOpen(false);
-  }
-
-  return (
-    <div ref={menuRef} className="absolute right-4 top-4 z-30 sm:right-6 sm:top-6">
-      <button
-        type="button"
-        aria-label="Open menu"
-        aria-expanded={isOpen}
-        onClick={() => setIsOpen((current) => !current)}
-        className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6]/95 text-[#4a3c31] shadow-md backdrop-blur-sm transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a3c31]"
-      >
-        <span className="sr-only">Menu</span>
-        <div className="flex flex-col gap-1.5">
-          <span className="block h-0.5 w-5 rounded-full bg-current" />
-          <span className="block h-0.5 w-5 rounded-full bg-current" />
-          <span className="block h-0.5 w-5 rounded-full bg-current" />
-        </div>
-      </button>
-
-      {isOpen ? (
-        <div className="mt-3 w-56 overflow-hidden rounded-3xl border border-[#eadfce] bg-[#F5F0E6]/95 p-2 shadow-[0_20px_50px_rgba(74,60,49,0.18)] backdrop-blur-md">
-          <Link
-            href="/"
-            onClick={closeMenu}
-            className="block rounded-2xl px-4 py-3 text-left text-sm font-semibold tracking-[0.08em] text-[#4a3c31] transition hover:bg-[#f7c7b6]"
-          >
-            Home
-          </Link>
-          <Link
-            href="/timeline"
-            onClick={closeMenu}
-            className="block rounded-2xl px-4 py-3 text-left text-sm font-semibold tracking-[0.08em] text-[#4a3c31] transition hover:bg-[#f7c7b6]"
-          >
-            Timeline
-          </Link>
-          <Link
-            href="/create"
-            onClick={closeMenu}
-            className="block rounded-2xl px-4 py-3 text-left text-sm font-semibold tracking-[0.08em] text-[#4a3c31] transition hover:bg-[#f7c7b6]"
-          >
-            Create Memory
-          </Link>
-          <Link
-            href="/about"
-            onClick={closeMenu}
-            className="block rounded-2xl px-4 py-3 text-left text-sm font-semibold tracking-[0.08em] text-[#4a3c31] transition hover:bg-[#f7c7b6]"
-          >
-            About
-          </Link>
-        </div>
-      ) : null}
-    </div>
   );
 }
 
@@ -251,160 +166,157 @@ export default function MemoryPolaroid({
   }
 
   return (
-    <>
-      <section className="relative isolate min-h-screen overflow-hidden bg-[#4a3c31]">
-        <UnlockWaveBackground />
-        <TopRightMenu />
+    <section className="relative isolate min-h-screen overflow-hidden bg-[#4a3c31]">
+      <UnlockWaveBackground />
 
-        <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col items-center justify-start px-4 pb-16 pt-16 text-center sm:px-6 sm:pb-20 sm:pt-20">
-          <div className="absolute left-1/2 top-[3%] h-[28rem] w-[30rem] -translate-x-1/2 rounded-full bg-[#F5F0E6]/76 blur-3xl" />
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col items-center justify-start px-4 pb-16 pt-16 text-center sm:px-6 sm:pb-20 sm:pt-20">
+        <div className="absolute left-1/2 top-[3%] h-[28rem] w-[30rem] -translate-x-1/2 rounded-full bg-[#F5F0E6]/76 blur-3xl" />
 
-          <div className="relative z-10 flex w-full flex-col items-center">
-            <h1
-              className={`${handwritten.className} mt-3 text-[2.8rem] leading-none text-[#4a3c31] sm:text-[3.4rem]`}
-            >
-              {title}
-            </h1>
+        <div className="relative z-10 flex w-full flex-col items-center">
+          <h1
+            className={`${handwritten.className} mt-3 text-[2.8rem] leading-none text-[#4a3c31] sm:text-[3.4rem]`}
+          >
+            {title}
+          </h1>
 
-            <p className="mt-2 text-sm font-medium text-white">{unlockDateLabel}</p>
+          <p className="mt-2 text-sm font-medium text-white">{unlockDateLabel}</p>
 
-            {!hasMedia ? (
-              <p className="mt-2 max-w-md text-sm leading-7 text-[#4a3c31] sm:text-base">
-                A quiet piece of your story, saved here like something held
-                between pages.
-              </p>
-            ) : null}
+          {!hasMedia ? (
+            <p className="mt-2 max-w-md text-sm leading-7 text-[#4a3c31] sm:text-base">
+              A quiet piece of your story, saved here like something held
+              between pages.
+            </p>
+          ) : null}
 
-            <article className="mt-5 w-full max-w-[min(600px,88vw)] rotate-[-1.5deg] rounded-[2rem] bg-gray-100 p-4 pb-9 shadow-[0_28px_80px_rgba(74,60,49,0.32)] sm:mt-6 sm:p-5 sm:pb-11 lg:w-[600px] lg:max-w-[600px] lg:max-h-[95vh] lg:pb-12">
-              <div className="overflow-hidden rounded-[1.5rem] bg-[#f8f1e8] shadow-inner">
-                <div className="relative aspect-[4/5] max-h-[72vh] overflow-hidden lg:max-h-[70vh]">
-                  {hasMedia ? (
-                    <div
-                      className="flex h-full w-full transition-transform duration-500 ease-out"
-                      style={{ transform: `translateX(-${activeIndex * 100}%)` }}
-                    >
-                      {mediaUrls.map((src, index) => (
-                        <div
-                          key={`${src}-${index}`}
-                          className="relative h-full w-full shrink-0 bg-[#f8f1e8]"
-                        >
-                          {isVideo(src) ? (
-                            <video
-                              src={src}
-                              controls
-                              className="h-full w-full object-contain"
-                            />
-                          ) : (
-                            <Image
-                              src={src}
-                              alt={`${title} media ${index + 1}`}
-                              fill
-                              unoptimized
-                              className="object-contain"
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="h-full bg-[#f8f1e8]" />
-                  )}
-                </div>
-
-                {totalItems > 1 ? (
-                  <div className="flex items-center justify-center gap-3 px-4 py-4">
-                    <button
-                      type="button"
-                      onClick={goToPrevious}
-                      aria-label="Previous media"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f7c7b6] text-[#4a3c31] transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
-                    >
-                      <span aria-hidden="true">&lt;</span>
-                    </button>
-
-                    <div className="flex items-center gap-2">
-                      {mediaUrls.map((_, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={() => setActiveIndex(index)}
-                          aria-label={`Go to media ${index + 1}`}
-                          className={`h-2.5 w-2.5 rounded-full transition ${
-                            index === activeIndex ? "bg-[#f7c7b6]" : "bg-gray-400"
-                          }`}
-                        />
-                      ))}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={goToNext}
-                      aria-label="Next media"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f7c7b6] text-[#4a3c31] transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
-                    >
-                      <span aria-hidden="true">&gt;</span>
-                    </button>
+          <article className="mt-5 w-full max-w-[min(600px,88vw)] rotate-[-1.5deg] rounded-[2rem] bg-gray-100 p-4 pb-9 shadow-[0_28px_80px_rgba(74,60,49,0.32)] sm:mt-6 sm:p-5 sm:pb-11 lg:w-[600px] lg:max-w-[600px] lg:max-h-[95vh] lg:pb-12">
+            <div className="overflow-hidden rounded-[1.5rem] bg-[#f8f1e8] shadow-inner">
+              <div className="relative aspect-[4/5] max-h-[72vh] overflow-hidden lg:max-h-[70vh]">
+                {hasMedia ? (
+                  <div
+                    className="flex h-full w-full transition-transform duration-500 ease-out"
+                    style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+                  >
+                    {mediaUrls.map((src, index) => (
+                      <div
+                        key={`${src}-${index}`}
+                        className="relative h-full w-full shrink-0 bg-[#f8f1e8]"
+                      >
+                        {isVideo(src) ? (
+                          <video
+                            src={src}
+                            controls
+                            className="h-full w-full object-contain"
+                          />
+                        ) : (
+                          <Image
+                            src={src}
+                            alt={`${title} media ${index + 1}`}
+                            fill
+                            unoptimized
+                            className="object-contain"
+                          />
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ) : null}
+                ) : (
+                  <div className="h-full bg-[#f8f1e8]" />
+                )}
               </div>
 
-              <div className="px-3 pt-8 sm:px-4 sm:pt-9 lg:pt-10">
-                <p className="whitespace-pre-wrap text-center text-sm leading-7 text-[#4a3c31] sm:text-base sm:leading-8 lg:text-lg">
-                  {message}
-                </p>
-                <p className="mt-6 text-center text-sm text-gray-500">
-                  Saved {createdAtLabel}
-                </p>
-              </div>
-            </article>
+              {totalItems > 1 ? (
+                <div className="flex items-center justify-center gap-3 px-4 py-4">
+                  <button
+                    type="button"
+                    onClick={goToPrevious}
+                    aria-label="Previous media"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f7c7b6] text-[#4a3c31] transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+                  >
+                    <span aria-hidden="true">&lt;</span>
+                  </button>
 
-            <div className="mt-6 flex max-w-[24rem] flex-wrap items-center justify-center gap-3 sm:mt-8 sm:max-w-none">
-              <ShareIconButton href={shareLinks.twitter} label="Share on X">
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-current">
-                  <path d="M18.9 3H22l-6.8 7.8L23 21h-6.1l-4.8-6.3L6.6 21H3.5l7.3-8.3L3 3h6.2l4.3 5.8L18.9 3Zm-1.1 16h1.7L8.3 4.9H6.5L17.8 19Z" />
-                </svg>
-              </ShareIconButton>
+                  <div className="flex items-center gap-2">
+                    {mediaUrls.map((_, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setActiveIndex(index)}
+                        aria-label={`Go to media ${index + 1}`}
+                        className={`h-2.5 w-2.5 rounded-full transition ${
+                          index === activeIndex ? "bg-[#f7c7b6]" : "bg-gray-400"
+                        }`}
+                      />
+                    ))}
+                  </div>
 
-              <ShareIconButton href={shareLinks.facebook} label="Share on Facebook">
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-current">
-                  <path d="M13.5 21v-7h2.3l.4-2.8h-2.7V9.4c0-.8.2-1.4 1.4-1.4H16V5.5c-.2 0-.9-.1-1.8-.1-1.8 0-3 1.1-3 3.2v2.6H9v2.8h2.4v7h2.1Z" />
-                </svg>
-              </ShareIconButton>
-
-              <ShareIconButton href={shareLinks.whatsapp} label="Share on WhatsApp">
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-current">
-                  <path d="M12 2a9.8 9.8 0 0 0-8.4 14.8L2 22l5.3-1.5A9.9 9.9 0 1 0 12 2Zm0 17.9c-1.5 0-3-.4-4.2-1.2l-.3-.2-3.1.9.9-3-.2-.3a8 8 0 1 1 6.9 3.8Zm4.4-5.9c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.6.1l-.5.7c-.1.2-.3.2-.6.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.3 0-.5.1-.6l.4-.4.3-.5c.1-.1.1-.3 0-.5l-.7-1.7c-.2-.4-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3c-.2.2-.8.8-.8 1.9s.8 2.2.9 2.3c.1.2 1.6 2.5 4 3.4 1.5.6 2 .6 2.7.5.4-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1-.1 0-.3-.1-.5-.2Z" />
-                </svg>
-              </ShareIconButton>
-
-              <button
-                type="button"
-                onClick={handleNativeShare}
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-4 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] shadow transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
-              >
-                Share
-              </button>
-
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-4 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] shadow transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
-              >
-                {copied ? "Link Copied" : "Copy Link"}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-red-300 bg-red-400 px-4 text-sm font-semibold tracking-[0.18em] text-white shadow transition hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isDeleting ? "Deleting..." : "Delete"}
-              </button>
+                  <button
+                    type="button"
+                    onClick={goToNext}
+                    aria-label="Next media"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f7c7b6] text-[#4a3c31] transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+                  >
+                    <span aria-hidden="true">&gt;</span>
+                  </button>
+                </div>
+              ) : null}
             </div>
+
+            <div className="px-3 pt-8 sm:px-4 sm:pt-9 lg:pt-10">
+              <p className="whitespace-pre-wrap text-center text-sm leading-7 text-[#4a3c31] sm:text-base sm:leading-8 lg:text-lg">
+                {message}
+              </p>
+              <p className="mt-6 text-center text-sm text-gray-500">
+                Saved {createdAtLabel}
+              </p>
+            </div>
+          </article>
+
+          <div className="mt-6 flex max-w-[24rem] flex-wrap items-center justify-center gap-3 sm:mt-8 sm:max-w-none">
+            <ShareIconButton href={shareLinks.twitter} label="Share on X">
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-current">
+                <path d="M18.9 3H22l-6.8 7.8L23 21h-6.1l-4.8-6.3L6.6 21H3.5l7.3-8.3L3 3h6.2l4.3 5.8L18.9 3Zm-1.1 16h1.7L8.3 4.9H6.5L17.8 19Z" />
+              </svg>
+            </ShareIconButton>
+
+            <ShareIconButton href={shareLinks.facebook} label="Share on Facebook">
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-current">
+                <path d="M13.5 21v-7h2.3l.4-2.8h-2.7V9.4c0-.8.2-1.4 1.4-1.4H16V5.5c-.2 0-.9-.1-1.8-.1-1.8 0-3 1.1-3 3.2v2.6H9v2.8h2.4v7h2.1Z" />
+              </svg>
+            </ShareIconButton>
+
+            <ShareIconButton href={shareLinks.whatsapp} label="Share on WhatsApp">
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-current">
+                <path d="M12 2a9.8 9.8 0 0 0-8.4 14.8L2 22l5.3-1.5A9.9 9.9 0 1 0 12 2Zm0 17.9c-1.5 0-3-.4-4.2-1.2l-.3-.2-3.1.9.9-3-.2-.3a8 8 0 1 1 6.9 3.8Zm4.4-5.9c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.6.1l-.5.7c-.1.2-.3.2-.6.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.3 0-.5.1-.6l.4-.4.3-.5c.1-.1.1-.3 0-.5l-.7-1.7c-.2-.4-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3c-.2.2-.8.8-.8 1.9s.8 2.2.9 2.3c.1.2 1.6 2.5 4 3.4 1.5.6 2 .6 2.7.5.4-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1-.1 0-.3-.1-.5-.2Z" />
+              </svg>
+            </ShareIconButton>
+
+            <button
+              type="button"
+              onClick={handleNativeShare}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-4 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] shadow transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+            >
+              Share
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-4 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] shadow transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+            >
+              {copied ? "Link Copied" : "Copy Link"}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-red-300 bg-red-400 px-4 text-sm font-semibold tracking-[0.18em] text-white shadow transition hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </button>
           </div>
         </div>
-      </section>
-    </>
+      </div>
+    </section>
   );
 }

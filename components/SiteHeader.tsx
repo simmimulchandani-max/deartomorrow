@@ -1,70 +1,108 @@
-"use client";
+'use client';
 
-import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Playfair_Display } from "next/font/google";
-
-const brandFont = Playfair_Display({
-  subsets: ["latin"],
-  weight: ["600", "700"],
-});
-
-const navLinks = [
-  { href: "/about", label: "About" },
-  { href: "/timeline", label: "Timeline" },
-  { href: "/create", label: "Create Memory" },
-];
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 
 export default function SiteHeader() {
-  const pathname = usePathname();
-  const isHomePage = pathname === "/";
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const visibleLinks = isHomePage
-    ? navLinks.filter((link) => link.href === "/about")
-    : navLinks;
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
+  function closeMenu() {
+    setIsOpen(false);
+  }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/50 bg-[rgba(247,242,233,0.82)] backdrop-blur-xl">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-4">
-        <Link
-          href="/"
-          className={`${brandFont.className} text-elevated inline-flex items-center gap-3 text-2xl leading-none transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d79a87] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f2e9]`}
-        >
-          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/70 shadow-sm">
+    <header className="sticky top-0 z-50 border-b border-[#eadfce] bg-[#F5F0E6]/95 backdrop-blur-sm">
+      <div className="mx-auto flex h-24 w-full max-w-[1400px] items-center justify-between px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="flex items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-[#ded7cd] bg-white shadow-sm">
             <Image
               src="/favicon.png"
               alt="Until Tomorrow logo"
-              width={24}
-              height={24}
-              className="h-6 w-6 object-contain"
+              width={34}
+              height={34}
+              className="h-auto w-auto"
+              priority
             />
+          </div>
+          <span className="text-[2rem] font-semibold tracking-[-0.02em] text-[#4a3c31] sm:text-[2.2rem]">
+            Until Tomorrow
           </span>
-          <span>Until Tomorrow</span>
         </Link>
 
-        <nav className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-          {visibleLinks.map((link) => {
-            const isActive =
-              pathname === link.href ||
-              (link.href !== "/" && pathname.startsWith(`${link.href}/`));
+        <div ref={menuRef} className="relative">
+          <button
+            type="button"
+            aria-label="Open menu"
+            aria-expanded={isOpen}
+            onClick={() => setIsOpen((current) => !current)}
+            className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] text-[#4a3c31] shadow-md transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a3c31]"
+          >
+            <span className="sr-only">Menu</span>
+            <div className="flex flex-col gap-1.5">
+              <span className="block h-0.5 w-5 rounded-full bg-current" />
+              <span className="block h-0.5 w-5 rounded-full bg-current" />
+              <span className="block h-0.5 w-5 rounded-full bg-current" />
+            </div>
+          </button>
 
-            return (
+          {isOpen ? (
+            <div className="absolute right-0 mt-3 w-64 overflow-hidden rounded-[2rem] border border-[#eadfce] bg-[#F5F0E6] p-3 shadow-[0_24px_60px_rgba(74,60,49,0.18)]">
               <Link
-                key={link.href}
-                href={link.href}
-                aria-current={isActive ? "page" : undefined}
-                className={`inline-flex min-h-11 items-center justify-center rounded-full px-4 text-sm font-semibold tracking-[0.14em] transition duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d79a87] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f2e9] ${
-                  isActive
-                    ? "bg-[#f7c7b6] text-[#4a3c31] shadow-[0_12px_26px_rgba(74,60,49,0.12)]"
-                    : "border border-white/70 bg-white/55 text-[#4a3c31] hover:bg-white/80"
-                }`}
+                href="/"
+                onClick={closeMenu}
+                className="block rounded-2xl px-5 py-4 text-lg font-semibold tracking-[0.08em] text-[#4a3c31] transition hover:bg-[#f7c7b6]"
               >
-                {link.label}
+                Home
               </Link>
-            );
-          })}
-        </nav>
+              <Link
+                href="/timeline"
+                onClick={closeMenu}
+                className="block rounded-2xl px-5 py-4 text-lg font-semibold tracking-[0.08em] text-[#4a3c31] transition hover:bg-[#f7c7b6]"
+              >
+                Timeline
+              </Link>
+              <Link
+                href="/create"
+                onClick={closeMenu}
+                className="block rounded-2xl px-5 py-4 text-lg font-semibold tracking-[0.08em] text-[#4a3c31] transition hover:bg-[#f7c7b6]"
+              >
+                Create Memory
+              </Link>
+              <Link
+                href="/about"
+                onClick={closeMenu}
+                className="block rounded-2xl px-5 py-4 text-lg font-semibold tracking-[0.08em] text-[#4a3c31] transition hover:bg-[#f7c7b6]"
+              >
+                About
+              </Link>
+            </div>
+          ) : null}
+        </div>
       </div>
     </header>
   );
