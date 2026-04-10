@@ -1,11 +1,18 @@
 import { deleteTimelineMemory } from "@/lib/store";
+import type { NextRequest } from "next/server";
+
+type RouteContext = {
+  params: Promise<{
+    id: string;
+  }>;
+};
 
 export async function DELETE(
-  _request: Request,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  context: RouteContext
 ) {
   try {
-    const id = params?.id;
+    const { id } = await context.params;
 
     if (!id) {
       return Response.json(
