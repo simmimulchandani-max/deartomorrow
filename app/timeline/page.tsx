@@ -160,91 +160,88 @@ export default function TimelinePage() {
           <div className="rounded-[1.75rem] border border-white/70 bg-gray-100 p-8 text-center shadow-sm">
             <p className="text-gray-600">Loading your memories...</p>
           </div>
+        ) : memories.length === 0 ? (
+          <div className="rounded-[1.75rem] border border-white/70 bg-gray-100 p-8 shadow-sm sm:p-10">
+            <div className="mx-auto max-w-xl text-center">
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#f7c7b6] text-3xl shadow-sm">
+                🌱
+              </div>
+
+              <h2 className="text-2xl font-semibold text-[#4a3c31] sm:text-3xl">
+                Nothing here yet
+              </h2>
+
+              <p className="mt-3 text-sm leading-7 text-gray-600 sm:text-base">
+                Leave something for your future self — a thought, a moment, or a
+                feeling worth revisiting.
+              </p>
+
+              <div className="mx-auto mt-6 max-w-md rounded-[1.5rem] bg-white/70 p-4">
+                <WaitingWaveCard label="Waiting to bloom" />
+                <p className="mt-4 text-center text-xs text-gray-500">
+                  Your first memory will appear here
+                </p>
+              </div>
+
+              <div className="mt-6">
+                <Link
+                  href="/create"
+                  className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-6 text-sm font-semibold tracking-[0.12em] text-[#4a3c31] shadow transition hover:bg-[#f4bba8]"
+                >
+                  Create Your First Memory
+                </Link>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {memories.length === 0 ? (
-              <>
-                {[1, 2, 3].map((card) => (
-                  <div
-                    key={card}
-                    className="rounded-[1.75rem] border border-white/70 bg-gray-100 p-6 shadow-sm"
-                  >
-                    <div>
-                      <h2 className="text-xl font-semibold text-[#4a3c31]">
-                        Your first memory
-                      </h2>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Create something for your future self
-                      </p>
-                    </div>
+            {memories.map((memory) => {
+              const ready = isReadyToUnlock(memory.unlock_date);
 
-                    <div className="mt-5 rounded-[1.5rem] bg-white/70 p-4">
-                      <WaitingWaveCard />
-                      <p className="mt-4 text-center text-xs text-gray-500">
-                        Nothing planted yet
-                      </p>
-                    </div>
+              return (
+                <div
+                  key={memory.id}
+                  className="rounded-[1.75rem] border border-white/70 bg-gray-100 p-6 shadow-sm"
+                >
+                  <div>
+                    <h2 className="text-xl font-semibold text-[#4a3c31]">
+                      {memory.title || 'Untitled Memory'}
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {ready ? 'Ready to unlock' : 'Waiting to bloom'}
+                    </p>
+                  </div>
 
-                    <div className="mt-5">
+                  <div className="mt-5 rounded-[1.5rem] bg-white/70 p-4">
+                    <WaitingWaveCard
+                      label={ready ? 'Ready to bloom' : 'Waiting to bloom'}
+                    />
+                    <p className="mt-4 text-center text-xs text-gray-500">
+                      Unlocks {formatUnlockDate(memory.unlock_date)}
+                    </p>
+                  </div>
+
+                  <div className="mt-5">
+                    {ready ? (
                       <Link
-                        href="/create"
+                        href={buildMemoryPath(memory.id)}
                         className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-5 text-sm font-semibold text-[#4a3c31] transition hover:bg-[#f4bba8]"
                       >
-                        Create Memory
+                        Unlock
                       </Link>
-                    </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-gray-200 bg-white px-5 text-sm font-semibold text-gray-400"
+                      >
+                        Not ready yet
+                      </button>
+                    )}
                   </div>
-                ))}
-              </>
-            ) : (
-              memories.map((memory) => {
-                const ready = isReadyToUnlock(memory.unlock_date);
-
-                return (
-                  <div
-                    key={memory.id}
-                    className="rounded-[1.75rem] border border-white/70 bg-gray-100 p-6 shadow-sm"
-                  >
-                    <div>
-                      <h2 className="text-xl font-semibold text-[#4a3c31]">
-                        {memory.title || 'Untitled Memory'}
-                      </h2>
-                      <p className="mt-1 text-sm text-gray-500">
-                        {ready ? 'Ready to unlock' : 'Waiting to bloom'}
-                      </p>
-                    </div>
-
-                    <div className="mt-5 rounded-[1.5rem] bg-white/70 p-4">
-                      <WaitingWaveCard
-                        label={ready ? 'Ready to bloom' : 'Waiting to bloom'}
-                      />
-                      <p className="mt-4 text-center text-xs text-gray-500">
-                        Unlocks {formatUnlockDate(memory.unlock_date)}
-                      </p>
-                    </div>
-
-                    <div className="mt-5">
-                      {ready ? (
-                        <Link
-                          href={buildMemoryPath(memory.id)}
-                          className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-5 text-sm font-semibold text-[#4a3c31] transition hover:bg-[#f4bba8]"
-                        >
-                          Unlock
-                        </Link>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled
-                          className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-gray-200 bg-white px-5 text-sm font-semibold text-gray-400"
-                        >
-                          Not ready yet
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
