@@ -19,6 +19,8 @@ type MemoryPolaroidProps = {
   unlockDateLabel: string;
   createdAtLabel: string;
   mediaUrls: string[];
+  sharePath?: string;
+  showDeleteButton?: boolean;
 };
 
 function isVideo(src: string) {
@@ -54,6 +56,8 @@ export default function MemoryPolaroid({
   unlockDateLabel,
   createdAtLabel,
   mediaUrls,
+  sharePath,
+  showDeleteButton = true,
 }: MemoryPolaroidProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -66,11 +70,11 @@ export default function MemoryPolaroid({
 
   const shareUrl = useMemo(() => {
     if (typeof window === "undefined") {
-      return buildMemoryPath(memoryId);
+      return sharePath ?? buildMemoryPath(memoryId);
     }
 
-    return `${window.location.origin}${buildMemoryPath(memoryId)}`;
-  }, [memoryId]);
+    return `${window.location.origin}${sharePath ?? buildMemoryPath(memoryId)}`;
+  }, [memoryId, sharePath]);
 
   const shareLinks = useMemo(() => {
     const shareText = `${title} - ${message}`;
@@ -315,16 +319,18 @@ export default function MemoryPolaroid({
               {copied ? "Link Copied" : "Copy Link"}
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setDeleteError("");
-                setShowDeleteModal(true);
-              }}
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-red-300 bg-red-400 px-4 text-sm font-semibold tracking-[0.18em] text-white shadow transition hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
-            >
-              Delete
-            </button>
+            {showDeleteButton ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteError("");
+                  setShowDeleteModal(true);
+                }}
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-red-300 bg-red-400 px-4 text-sm font-semibold tracking-[0.18em] text-white shadow transition hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+              >
+                Delete
+              </button>
+            ) : null}
           </div>
 
           {deleteError ? (

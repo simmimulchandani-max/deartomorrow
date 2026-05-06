@@ -1,52 +1,93 @@
-import { createCapsule, getCapsuleById, listCapsules } from "@/lib/store";
+import { generateId } from "@/lib/generateId";
+import {
+  buildCapsuleSharePath,
+  buildCapsuleStatusPath,
+  createCapsule,
+  dateOnly,
+  isValidDateString,
+  listCapsulesForOwner,
+} from "@/lib/capsules";
+import { getUserFromRequest } from "@/lib/serverAuth";
 
-function isValidDateString(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
+type CreateCapsuleRequest = {
+  title?: string;
+  description?: string;
+  submissionDeadline?: string;
+  unlockDate?: string;
+};
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
+  try {
+    const user = await getUserFromRequest(request);
 
-  if (id) {
-    const capsule = await getCapsuleById(id);
-
-    if (!capsule) {
-      return Response.json({ error: "Capsule not found." }, { status: 404 });
+    if (!user) {
+      return Response.json({ error: "You need to be logged in." }, { status: 401 });
     }
 
-    return Response.json({ capsule });
+    const capsules = await listCapsulesForOwner(user.id);
+    return Response.json({ capsules });
+  } catch (error) {
+    console.error("List capsules error:", error);
+    return Response.json({ error: "Failed to load capsules." }, { status: 500 });
   }
-
-  const capsules = await listCapsules();
-  return Response.json({ capsules });
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as {
-    title?: string;
-    unlockDate?: string;
-  };
+  try {
+    const user = await getUserFromRequest(request);
 
-  const title = body.title?.trim() ?? "";
-  const unlockDate = body.unlockDate?.trim() ?? "";
+    if (!user) {
+      return Response.json({ error: "You need to be logged in to create a capsule." }, { status: 401 });
+    }
 
-  if (!title) {
-    return Response.json({ error: "Title is required." }, { status: 400 });
-  }
+    const body = (await request.json()) as CreateCapsuleRequest;
+    const title = body.title?.trim() ?? "";
+    const description = body.description?.trim() || null;
+    const submissionDeadline = body.submissionDeadline?.trim() ?? "";
+    const unlockDate = body.unlockDate?.trim() ?? "";
+    const today = dateOnly(new Date());
 
-  if (!isValidDateString(unlockDate)) {
+    if (!title) {
+      return Response.json({ error: "Capsule title is required." }, { status: 400 });
+    }
+
+    if (!isValidDateString(submissionDeadline) || !isValidDateString(unlockDate)) {
+      return Response.json({ error: "Valid deadline and unlock dates are required." }, { status: 400 });
+    }
+
+    if (unlockDate < today) {
+      return Response.json({ error: "Unlock date cannot be in the past." }, { status: 400 });
+    }
+
+    if (submissionDeadline >= unlockDate) {
+      return Response.json(
+        { error: "Submission deadline must be before the unlock date." },
+        { status: 400 }
+      );
+    }
+
+    const capsule = await createCapsule({
+      ownerUserId: user.id,
+      title,
+      description,
+      submissionDeadline,
+      unlockDate,
+      shareSlug: generateId(),
+    });
+
     return Response.json(
-      { error: "A valid unlock date is required." },
-      { status: 400 }
+      {
+        capsule,
+        sharePath: buildCapsuleSharePath(capsule.shareSlug),
+        statusPath: buildCapsuleStatusPath(capsule.shareSlug),
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("Create capsule error:", error);
+    return Response.json(
+      { error: error instanceof Error ? error.message : "Failed to create capsule." },
+      { status: 500 }
     );
   }
-
-  const capsule = await createCapsule({
-    id: crypto.randomUUID(),
-    title,
-    unlockDate,
-  });
-
-  return Response.json({ capsule }, { status: 201 });
 }

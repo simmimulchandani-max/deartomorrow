@@ -137,7 +137,7 @@ export default function Home() {
                   href="/create"
                   className="inline-flex min-h-14 w-full items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-7 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] shadow-[0_16px_34px_rgba(74,60,49,0.12)] transition duration-300 hover:-translate-y-0.5 hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d79a87] focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:translate-y-px"
                 >
-                  Create a Memory
+                  Create
                 </Link>
               </div>
             ) : hasSentLink ? (

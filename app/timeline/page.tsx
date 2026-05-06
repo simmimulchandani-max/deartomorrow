@@ -120,7 +120,7 @@ export default function TimelinePage() {
           </div>
 
           <Link
-            href="/create"
+            href="/create/memory"
             className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-6 text-sm font-semibold tracking-[0.12em] text-[#4a3c31] shadow transition hover:bg-[#f4bba8]"
           >
             Create Memory
@@ -185,7 +185,7 @@ export default function TimelinePage() {
 
               <div className="mt-6">
                 <Link
-                  href="/create"
+                  href="/create/memory"
                   className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-6 text-sm font-semibold tracking-[0.12em] text-[#4a3c31] shadow transition hover:bg-[#f4bba8]"
                 >
                   Create Your First Memory
