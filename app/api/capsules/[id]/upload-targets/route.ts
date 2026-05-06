@@ -1,7 +1,8 @@
 import { generateId } from "@/lib/generateId";
-import { getCapsuleByShareSlug, hasDateArrived } from "@/lib/capsules";
+import { getCapsuleByShareSlug } from "@/lib/capsules";
 import { getStorageBucketName } from "@/lib/storageBucket";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { dateOnly, isSafeIdentifier, validateMediaFiles } from "@/lib/validation";
 
 type RouteContext = {
   params: Promise<{
@@ -14,6 +15,7 @@ type UploadTargetsRequest = {
   files?: Array<{
     name?: string;
     type?: string;
+    size?: number;
   }>;
 };
 
@@ -28,35 +30,54 @@ function getFileExtension(fileName: string) {
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+    if (!isSafeIdentifier(id)) {
+      return Response.json({ error: "Capsule not found." }, { status: 404 });
+    }
+
     const capsule = await getCapsuleByShareSlug(id);
 
     if (!capsule) {
       return Response.json({ error: "Capsule not found." }, { status: 404 });
     }
 
-    if (hasDateArrived(nextDate(capsule.submissionDeadline))) {
+    if (capsule.submissionDeadline < dateOnly(new Date())) {
       return Response.json(
         { error: "This capsule is closed for submissions." },
         { status: 403 }
       );
     }
 
-    const body = (await request.json()) as UploadTargetsRequest;
-    const memoryId =
+    let body: UploadTargetsRequest;
+    try {
+      body = (await request.json()) as UploadTargetsRequest;
+    } catch {
+      return Response.json({ error: "Invalid JSON payload." }, { status: 400 });
+    }
+    const rawMemoryId =
       typeof body.memoryId === "string" && body.memoryId.trim()
         ? body.memoryId.trim()
         : generateId();
+    const memoryId = isSafeIdentifier(rawMemoryId) ? rawMemoryId : generateId();
     const files = Array.isArray(body.files) ? body.files : [];
+    const normalizedFiles = files.map((file) => ({
+      name: typeof file.name === "string" ? file.name.trim() : "",
+      type: typeof file.type === "string" ? file.type.trim() : "",
+      size: typeof file.size === "number" ? file.size : 0,
+    }));
+    const mediaValidationError = validateMediaFiles(normalizedFiles);
+    if (mediaValidationError) {
+      return Response.json({ error: mediaValidationError }, { status: 400 });
+    }
 
-    if (files.length === 0) {
+    if (normalizedFiles.length === 0) {
       return Response.json({ memoryId, uploads: [] });
     }
 
     const supabase = getSupabaseAdminClient();
     const storageBucket = getStorageBucketName();
     const uploads = await Promise.all(
-      files.map(async (file) => {
-        const fileName = typeof file.name === "string" ? file.name.trim() : "";
+      normalizedFiles.map(async (file) => {
+        const fileName = file.name;
 
         if (!fileName) {
           throw new Error("Each upload target needs a file name.");
@@ -97,10 +118,4 @@ export async function POST(request: Request, context: RouteContext) {
       { status: 500 }
     );
   }
-}
-
-function nextDate(dateString: string) {
-  const date = new Date(`${dateString}T00:00:00`);
-  date.setDate(date.getDate() + 1);
-  return date.toISOString().slice(0, 10);
 }

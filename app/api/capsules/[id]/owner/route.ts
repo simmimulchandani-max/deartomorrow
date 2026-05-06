@@ -8,6 +8,7 @@ import {
   listCapsuleMemories,
 } from "@/lib/capsules";
 import { getUserFromRequest } from "@/lib/serverAuth";
+import { isSafeIdentifier } from "@/lib/validation";
 
 type RouteContext = {
   params: Promise<{
@@ -24,6 +25,10 @@ export async function GET(request: Request, context: RouteContext) {
     }
 
     const { id } = await context.params;
+    if (!isSafeIdentifier(id)) {
+      return Response.json({ error: "Capsule not found." }, { status: 404 });
+    }
+
     const capsule = await getCapsuleByShareSlug(id);
 
     if (!capsule) {

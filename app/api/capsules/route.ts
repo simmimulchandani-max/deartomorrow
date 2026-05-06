@@ -8,6 +8,11 @@ import {
   listCapsulesForOwner,
 } from "@/lib/capsules";
 import { getUserFromRequest } from "@/lib/serverAuth";
+import {
+  CAPSULE_DESCRIPTION_MAX,
+  CAPSULE_TITLE_MAX,
+  validateTextLength,
+} from "@/lib/validation";
 
 type CreateCapsuleRequest = {
   title?: string;
@@ -40,7 +45,13 @@ export async function POST(request: Request) {
       return Response.json({ error: "You need to be logged in to create a capsule." }, { status: 401 });
     }
 
-    const body = (await request.json()) as CreateCapsuleRequest;
+    let body: CreateCapsuleRequest;
+    try {
+      body = (await request.json()) as CreateCapsuleRequest;
+    } catch {
+      return Response.json({ error: "Invalid JSON payload." }, { status: 400 });
+    }
+
     const title = body.title?.trim() ?? "";
     const description = body.description?.trim() || null;
     const submissionDeadline = body.submissionDeadline?.trim() ?? "";
@@ -49,6 +60,22 @@ export async function POST(request: Request) {
 
     if (!title) {
       return Response.json({ error: "Capsule title is required." }, { status: 400 });
+    }
+
+    const titleError = validateTextLength(title, "Capsule title", CAPSULE_TITLE_MAX);
+    if (titleError) {
+      return Response.json({ error: titleError }, { status: 400 });
+    }
+
+    if (description) {
+      const descriptionError = validateTextLength(
+        description,
+        "Capsule description",
+        CAPSULE_DESCRIPTION_MAX
+      );
+      if (descriptionError) {
+        return Response.json({ error: descriptionError }, { status: 400 });
+      }
     }
 
     if (!isValidDateString(submissionDeadline) || !isValidDateString(unlockDate)) {

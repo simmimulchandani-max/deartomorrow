@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation';
 import { generateId } from '@/lib/generateId';
 import { buildMemoryPath } from '@/lib/memoryPaths';
 import { getSupabaseClient } from '@/lib/supabaseClient';
+import {
+  MAX_MEDIA_FILES,
+  MEMORY_MESSAGE_MAX,
+  MEMORY_PASSWORD_MAX,
+  MEMORY_TITLE_MAX,
+  validateMediaFiles,
+} from '@/lib/validation';
 
 const STORAGE_KEY = 'dear-tomorrow-memories';
 const NAV_BUTTON_CLASS =
@@ -32,8 +39,15 @@ export default function CreateMemoryPage() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
     try {
+      if (!user || !session) {
+        throw new Error('Please log in before creating a memory.');
+      }
+
       const memoryId = generateId();
       const selectedFiles = fileInputRef.current?.files ? Array.from(fileInputRef.current.files) : [];
       const payload = {
@@ -47,6 +61,29 @@ export default function CreateMemoryPage() {
         throw new Error('Title, message, and unlock date are required');
       }
 
+      if (payload.title.length > MEMORY_TITLE_MAX) {
+        throw new Error(`Title must be ${MEMORY_TITLE_MAX} characters or less.`);
+      }
+
+      if (payload.message.length > MEMORY_MESSAGE_MAX) {
+        throw new Error(`Message must be ${MEMORY_MESSAGE_MAX} characters or less.`);
+      }
+
+      if (payload.password.length > MEMORY_PASSWORD_MAX) {
+        throw new Error(`Password must be ${MEMORY_PASSWORD_MAX} characters or less.`);
+      }
+
+      const mediaValidationError = validateMediaFiles(
+        selectedFiles.map((file) => ({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        }))
+      );
+      if (mediaValidationError) {
+        throw new Error(mediaValidationError);
+      }
+
       let uploadedMediaUrls: string[] = [];
       const failedUploads: string[] = [];
 
@@ -55,13 +92,14 @@ export default function CreateMemoryPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             id: memoryId,
-            userId: user?.id ?? null,
             files: selectedFiles.map((file) => ({
               name: file.name,
               type: file.type,
+              size: file.size,
             })),
           }),
         });
@@ -93,13 +131,12 @@ export default function CreateMemoryPage() {
         const uploadResults = await Promise.all(
           selectedFiles.map(async (file, index) => {
             const target = uploadTargets[index];
-            const uploadFormData = new FormData();
-            uploadFormData.append('cacheControl', '3600');
-            uploadFormData.append('file', file, file.name);
-
             const uploadResponse = await fetch(target.signedUrl, {
               method: 'PUT',
-              body: uploadFormData,
+              headers: {
+                'Content-Type': file.type || 'application/octet-stream',
+              },
+              body: file,
             });
 
             if (!uploadResponse.ok) {
@@ -132,19 +169,19 @@ export default function CreateMemoryPage() {
 
       const createResponse = await fetch('/api/shared-memories', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          id: memoryId,
-          title: payload.title,
-          message: payload.message,
-          unlockDate: payload.unlockDate,
-          password: payload.password,
-          userId: user?.id ?? null,
-          mediaUrls: uploadedMediaUrls,
-        }),
-      });
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            id: memoryId,
+            title: payload.title,
+            message: payload.message,
+            unlockDate: payload.unlockDate,
+            password: payload.password,
+            mediaUrls: uploadedMediaUrls,
+          }),
+        });
 
       const responseText = await createResponse.text();
       let createPayload: {
@@ -332,6 +369,7 @@ export default function CreateMemoryPage() {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            maxLength={MEMORY_TITLE_MAX}
             className="w-full p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
           />
         </div>
@@ -342,6 +380,7 @@ export default function CreateMemoryPage() {
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
+            maxLength={MEMORY_MESSAGE_MAX}
             className="w-full p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 h-32"
           />
         </div>
@@ -401,9 +440,13 @@ export default function CreateMemoryPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            maxLength={MEMORY_PASSWORD_MAX}
             className="w-full p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
             placeholder="Protect this shared memory with a password"
           />
+          <p className="mt-2 text-xs text-gray-500">
+            Up to {MAX_MEDIA_FILES} files, 25MB each.
+          </p>
         </div>
 
         {/* SUBMIT */}

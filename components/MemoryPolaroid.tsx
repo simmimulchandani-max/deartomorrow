@@ -6,6 +6,7 @@ import confetti from "canvas-confetti";
 import { Caveat } from "next/font/google";
 import { buildMemoryPath } from "@/lib/memoryPaths";
 import UnlockWaveBackground from "@/components/UnlockWaveBackground";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 
 const handwritten = Caveat({
   subsets: ["latin"],
@@ -136,11 +137,20 @@ export default function MemoryPolaroid({
   try {
     setIsDeleting(true);
     setDeleteError("");
+    const supabase = getSupabaseClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error("Please log in before deleting this memory.");
+    }
 
     const res = await fetch(`/api/memories/${memoryId}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
       },
     });
 

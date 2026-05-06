@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
+import { requireUserFromRequest } from "@/lib/serverAuth";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { getStorageBucketName } from "@/lib/storageBucket";
+import { isSafeIdentifier } from "@/lib/validation";
 
 type RouteContext = {
   params: Promise<{
@@ -9,13 +11,18 @@ type RouteContext = {
 };
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   context: RouteContext
 ) {
   try {
+    const auth = await requireUserFromRequest(request);
+    if (auth.response || !auth.user) {
+      return auth.response;
+    }
+
     const { id } = await context.params;
 
-    if (!id) {
+    if (!id || !isSafeIdentifier(id)) {
       return Response.json(
         { error: "Missing memory id." },
         { status: 400 }
@@ -23,6 +30,33 @@ export async function DELETE(
     }
 
     const supabase = getSupabaseAdminClient();
+    const { data: memory, error: memoryError } = await supabase
+      .from("memories")
+      .select("id, user_id")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (memoryError) {
+      return Response.json(
+        { error: memoryError.message },
+        { status: 500 }
+      );
+    }
+
+    if (!memory) {
+      return Response.json(
+        { error: "Memory not found." },
+        { status: 404 }
+      );
+    }
+
+    if (!memory.user_id || memory.user_id !== auth.user.id) {
+      return Response.json(
+        { error: "You do not have permission to delete this memory." },
+        { status: 403 }
+      );
+    }
+
     const bucket = getStorageBucketName();
     const folder = `memories/${id}`;
 

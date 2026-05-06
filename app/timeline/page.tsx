@@ -68,63 +68,65 @@ export default function TimelinePage() {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [capsules, setCapsules] = useState<Capsule[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     async function fetchMemories() {
       const supabase = getSupabaseClient();
+      setErrorMessage('');
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (userError || !user) {
-        console.error('Unable to get logged in user:', userError);
-        setMemories([]);
-        setCapsules([]);
-        setLoading(false);
-        return;
-      }
+        const user = session?.user ?? null;
+        if (!user || !session) {
+          setMemories([]);
+          setCapsules([]);
+          return;
+        }
 
-      const { data, error } = await supabase
-        .from('memories')
-        .select('id, title, unlock_date, user_id, media_url')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        const [memoryResult, capsuleResult] = await Promise.all([
+          supabase
+            .from('memories')
+            .select('id, title, unlock_date, user_id, media_url')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false }),
+          fetch('/api/capsules', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          }),
+        ]);
 
-      if (error) {
-        console.error('Error loading memories:', error);
-        setMemories([]);
-      } else {
-        setMemories((data as Memory[]) ?? []);
-      }
+        if (memoryResult.error) {
+          console.error('Error loading memories:', memoryResult.error);
+          setMemories([]);
+          setErrorMessage('Unable to load timeline right now. Please refresh.');
+        } else {
+          setMemories((memoryResult.data as Memory[]) ?? []);
+        }
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session) {
-        const capsuleResponse = await fetch('/api/capsules', {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
-        const capsulePayload = await capsuleResponse.json().catch(() => null);
-
-        if (!capsuleResponse.ok) {
+        const capsulePayload = await capsuleResult.json().catch(() => null);
+        if (!capsuleResult.ok) {
           console.error('Error loading capsules:', capsulePayload?.error);
           setCapsules([]);
+          setErrorMessage((current) => current || 'Unable to load timeline right now. Please refresh.');
         } else {
           setCapsules(Array.isArray(capsulePayload?.capsules) ? capsulePayload.capsules : []);
         }
-      } else {
+      } catch (error) {
+        console.error('Timeline loading error:', error);
+        setMemories([]);
         setCapsules([]);
+        setErrorMessage('Unable to load timeline right now. Please refresh.');
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     }
 
-    fetchMemories();
+    void fetchMemories();
   }, []);
 
   const totalCount = memories.length;
@@ -188,6 +190,12 @@ export default function TimelinePage() {
             </p>
           </div>
         </div>
+
+        {errorMessage ? (
+          <div className="mb-8 rounded-2xl border border-[#eadfce] bg-[#fff4dc] px-4 py-3 text-sm text-[#6c5630]">
+            {errorMessage}
+          </div>
+        ) : null}
 
         {loading ? (
           <div className="rounded-[1.75rem] border border-white/70 bg-gray-100 p-8 text-center shadow-sm">

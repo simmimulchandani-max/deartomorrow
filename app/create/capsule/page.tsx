@@ -3,6 +3,10 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { getSupabaseClient } from '@/lib/supabaseClient';
+import {
+  CAPSULE_DESCRIPTION_MAX,
+  CAPSULE_TITLE_MAX,
+} from '@/lib/validation';
 
 type CreatedCapsule = {
   title: string;
@@ -180,6 +184,7 @@ export default function CreateCapsulePage() {
                 type="text"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
+                maxLength={CAPSULE_TITLE_MAX}
                 className="w-full rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
                 required
               />
@@ -192,6 +197,7 @@ export default function CreateCapsulePage() {
               <textarea
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
+                maxLength={CAPSULE_DESCRIPTION_MAX}
                 className="h-32 w-full rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
               />
             </div>

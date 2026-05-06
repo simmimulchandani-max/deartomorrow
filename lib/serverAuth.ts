@@ -21,3 +21,16 @@ export async function getUserFromRequest(request: Request) {
 
   return data.user;
 }
+
+export async function requireUserFromRequest(request: Request) {
+  const user = await getUserFromRequest(request);
+
+  if (!user) {
+    return {
+      user: null,
+      response: Response.json({ error: "You need to be logged in." }, { status: 401 }),
+    };
+  }
+
+  return { user, response: null };
+}

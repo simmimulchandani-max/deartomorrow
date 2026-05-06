@@ -2,6 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { generateId } from '@/lib/generateId';
+import {
+  CONTRIBUTOR_NAME_MAX,
+  MAX_MEDIA_FILES,
+  MEMORY_MESSAGE_MAX,
+  MEMORY_TITLE_MAX,
+  validateMediaFiles,
+} from '@/lib/validation';
 
 type PublicCapsule = {
   shareSlug: string;
@@ -81,6 +88,17 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
       let uploadedMediaUrls: string[] = [];
 
       if (selectedFiles.length > 0) {
+        const mediaValidationError = validateMediaFiles(
+          selectedFiles.map((file) => ({
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          }))
+        );
+        if (mediaValidationError) {
+          throw new Error(mediaValidationError);
+        }
+
         const uploadTargetResponse = await fetch(`/api/capsules/${shareSlug}/upload-targets`, {
           method: 'POST',
           headers: {
@@ -91,6 +109,7 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
             files: selectedFiles.map((file) => ({
               name: file.name,
               type: file.type,
+              size: file.size,
             })),
           }),
         });
@@ -111,13 +130,12 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
         const uploadResults = await Promise.all(
           selectedFiles.map(async (file, index) => {
             const target = uploadTargets[index];
-            const uploadFormData = new FormData();
-            uploadFormData.append('cacheControl', '3600');
-            uploadFormData.append('file', file, file.name);
-
             const uploadResponse = await fetch(target.signedUrl, {
               method: 'PUT',
-              body: uploadFormData,
+              headers: {
+                'Content-Type': file.type || 'application/octet-stream',
+              },
+              body: file,
             });
 
             if (!uploadResponse.ok) {
@@ -246,6 +264,7 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
                   type="text"
                   value={contributorName}
                   onChange={(event) => setContributorName(event.target.value)}
+                  maxLength={CONTRIBUTOR_NAME_MAX}
                   className="w-full rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
                   required
                 />
@@ -257,6 +276,7 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
                   type="text"
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
+                  maxLength={MEMORY_TITLE_MAX}
                   className="w-full rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
                   required
                 />
@@ -267,6 +287,7 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
                 <textarea
                   value={message}
                   onChange={(event) => setMessage(event.target.value)}
+                  maxLength={MEMORY_MESSAGE_MAX}
                   className="h-32 w-full rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
                   required
                 />
@@ -301,6 +322,9 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
                   </div>
                 ) : null}
               </div>
+              <p className="text-xs text-gray-500">
+                Up to {MAX_MEDIA_FILES} files, 25MB each.
+              </p>
 
               {errorMessage ? (
                 <p className="rounded-2xl bg-[#fff4dc] px-4 py-3 text-sm text-[#6c5630]">

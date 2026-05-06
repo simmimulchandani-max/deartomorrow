@@ -1,4 +1,12 @@
 import { createTimelineMemory, listTimelineMemories } from "@/lib/store";
+import { requireUserFromRequest } from "@/lib/serverAuth";
+import {
+  MEMORY_MESSAGE_MAX,
+  MEMORY_TITLE_MAX,
+  dateOnly,
+  isValidDateString,
+  validateTextLength,
+} from "@/lib/validation";
 
 type CreateMemoryRequest = {
   title?: string;
@@ -11,12 +19,13 @@ type CreateMemoryRequest = {
   }>;
 };
 
-function isValidDateString(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
-
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const auth = await requireUserFromRequest(request);
+    if (auth.response) {
+      return auth.response;
+    }
+
     const memories = await listTimelineMemories();
     return Response.json({ memories });
   } catch (error) {
@@ -30,53 +39,62 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as CreateMemoryRequest;
+    const auth = await requireUserFromRequest(request);
+    if (auth.response) {
+      return auth.response;
+    }
 
-    const payload = {
-      title: body.title?.trim() ?? "",
-      message: body.message?.trim() ?? "",
-      unlockDate: body.unlockDate?.trim() ?? "",
-      media: Array.isArray(body.media)
-        ? body.media
-            .filter((item) => item && typeof item.name === "string")
-            .map((item) => ({
-              name: item.name?.trim() ?? "",
-              type: item.type?.trim() ?? "",
-              size: typeof item.size === "number" ? item.size : 0,
-            }))
-            .filter((item) => item.name)
-        : [],
-    };
+    let body: CreateMemoryRequest;
+    try {
+      body = (await request.json()) as CreateMemoryRequest;
+    } catch {
+      return Response.json({ message: "Invalid JSON payload." }, { status: 400 });
+    }
+    const title = body.title?.trim() ?? "";
+    const message = body.message?.trim() ?? "";
+    const unlockDate = body.unlockDate?.trim() ?? "";
+    const today = dateOnly(new Date());
+    const media = Array.isArray(body.media)
+      ? body.media
+          .filter((item) => item && typeof item.name === "string")
+          .map((item) => ({
+            name: item.name?.trim() ?? "",
+            type: item.type?.trim() ?? "",
+            size: typeof item.size === "number" ? item.size : 0,
+          }))
+          .filter((item) => item.name)
+      : [];
 
-    console.log("Create memory payload:", payload);
-
-    if (!payload.title) {
+    if (!title || !message || !unlockDate) {
       return Response.json(
-        { message: "Title is required." },
+        { message: "Title, message, and unlock date are required." },
         { status: 400 }
       );
     }
 
-    if (!payload.message) {
+    if (!isValidDateString(unlockDate) || unlockDate < today) {
       return Response.json(
-        { message: "Message is required." },
+        { message: "A valid future unlock date is required." },
         { status: 400 }
       );
     }
 
-    if (!isValidDateString(payload.unlockDate)) {
-      return Response.json(
-        { message: "A valid unlock date is required." },
-        { status: 400 }
-      );
+    const titleError = validateTextLength(title, "Title", MEMORY_TITLE_MAX);
+    if (titleError) {
+      return Response.json({ message: titleError }, { status: 400 });
+    }
+
+    const messageError = validateTextLength(message, "Message", MEMORY_MESSAGE_MAX);
+    if (messageError) {
+      return Response.json({ message: messageError }, { status: 400 });
     }
 
     const memory = await createTimelineMemory({
       id: crypto.randomUUID(),
-      title: payload.title,
-      message: payload.message,
-      unlockDate: payload.unlockDate,
-      media: payload.media,
+      title,
+      message,
+      unlockDate,
+      media,
     });
 
     return Response.json({ memory }, { status: 201 });

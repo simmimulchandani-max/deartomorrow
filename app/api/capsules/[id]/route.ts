@@ -1,4 +1,5 @@
-import { getCapsuleByShareSlug, hasDateArrived } from "@/lib/capsules";
+import { getCapsuleByShareSlug } from "@/lib/capsules";
+import { dateOnly, isSafeIdentifier } from "@/lib/validation";
 
 type RouteContext = {
   params: Promise<{
@@ -9,6 +10,10 @@ type RouteContext = {
 export async function GET(_request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
+    if (!isSafeIdentifier(id)) {
+      return Response.json({ error: "Capsule not found." }, { status: 404 });
+    }
+
     const capsule = await getCapsuleByShareSlug(id);
 
     if (!capsule) {
@@ -22,17 +27,11 @@ export async function GET(_request: Request, context: RouteContext) {
         description: capsule.description,
         submissionDeadline: capsule.submissionDeadline,
         unlockDate: capsule.unlockDate,
-        submissionsOpen: !hasDateArrived(nextDate(capsule.submissionDeadline)),
+        submissionsOpen: capsule.submissionDeadline >= dateOnly(new Date()),
       },
     });
   } catch (error) {
     console.error("Get public capsule error:", error);
     return Response.json({ error: "Failed to load capsule." }, { status: 500 });
   }
-}
-
-function nextDate(dateString: string) {
-  const date = new Date(`${dateString}T00:00:00`);
-  date.setDate(date.getDate() + 1);
-  return date.toISOString().slice(0, 10);
 }
