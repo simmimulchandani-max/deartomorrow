@@ -13,6 +13,15 @@ type Memory = {
   media_url?: string | null;
 };
 
+type Capsule = {
+  id: string;
+  title: string;
+  submissionDeadline: string;
+  unlockDate: string;
+  shareSlug: string;
+  createdAt: string | null;
+};
+
 function isReadyToUnlock(unlockDate: string | null) {
   if (!unlockDate) return false;
 
@@ -57,6 +66,7 @@ function WaitingWaveCard({ label = 'Waiting to bloom' }: { label?: string }) {
 
 export default function TimelinePage() {
   const [memories, setMemories] = useState<Memory[]>([]);
+  const [capsules, setCapsules] = useState<Capsule[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -71,6 +81,7 @@ export default function TimelinePage() {
       if (userError || !user) {
         console.error('Unable to get logged in user:', userError);
         setMemories([]);
+        setCapsules([]);
         setLoading(false);
         return;
       }
@@ -84,11 +95,32 @@ export default function TimelinePage() {
       if (error) {
         console.error('Error loading memories:', error);
         setMemories([]);
-        setLoading(false);
-        return;
+      } else {
+        setMemories((data as Memory[]) ?? []);
       }
 
-      setMemories((data as Memory[]) ?? []);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session) {
+        const capsuleResponse = await fetch('/api/capsules', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+        const capsulePayload = await capsuleResponse.json().catch(() => null);
+
+        if (!capsuleResponse.ok) {
+          console.error('Error loading capsules:', capsulePayload?.error);
+          setCapsules([]);
+        } else {
+          setCapsules(Array.isArray(capsulePayload?.capsules) ? capsulePayload.capsules : []);
+        }
+      } else {
+        setCapsules([]);
+      }
+
       setLoading(false);
     }
 
@@ -102,6 +134,7 @@ export default function TimelinePage() {
   const waitingCount = memories.filter(
     (memory) => !isReadyToUnlock(memory.unlock_date)
   ).length;
+  const totalItemCount = memories.length + capsules.length;
 
   return (
     <main className="min-h-screen bg-[#F5F0E6] px-6 py-10">
@@ -160,7 +193,7 @@ export default function TimelinePage() {
           <div className="rounded-[1.75rem] border border-white/70 bg-gray-100 p-8 text-center shadow-sm">
             <p className="text-gray-600">Loading your memories...</p>
           </div>
-        ) : memories.length === 0 ? (
+        ) : totalItemCount === 0 ? (
           <div className="rounded-[1.75rem] border border-white/70 bg-gray-100 p-8 shadow-sm sm:p-10">
             <div className="mx-auto max-w-xl text-center">
               <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#f7c7b6] text-3xl shadow-sm">
@@ -238,6 +271,55 @@ export default function TimelinePage() {
                         Not ready yet
                       </button>
                     )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {capsules.map((capsule) => {
+              const ready = isReadyToUnlock(capsule.unlockDate);
+              const href = ready
+                ? `/capsule/${capsule.shareSlug}/unlock`
+                : `/capsule/${capsule.shareSlug}/status`;
+
+              return (
+                <div
+                  key={capsule.id}
+                  className="rounded-[1.75rem] border border-white/70 bg-gray-100 p-6 shadow-sm"
+                >
+                  <div>
+                    <div className="mb-3 inline-flex rounded-full border border-[#e7b6a4] bg-[#f7c7b6]/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#4a3c31]">
+                      Capsule
+                    </div>
+                    <h2 className="text-xl font-semibold text-[#4a3c31]">
+                      {capsule.title || 'Untitled Capsule'}
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {ready ? 'Ready to open' : `Locked until ${formatUnlockDate(capsule.unlockDate)}`}
+                    </p>
+                  </div>
+
+                  <div className="mt-5 rounded-[1.5rem] bg-white/70 p-4">
+                    <WaitingWaveCard
+                      label={ready ? 'Ready to open' : 'Capsule sealed'}
+                    />
+                    <div className="mt-4 space-y-1 text-center text-xs text-gray-500">
+                      <p>Unlocks {formatUnlockDate(capsule.unlockDate)}</p>
+                      <p>Submissions close {formatUnlockDate(capsule.submissionDeadline)}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5">
+                    <Link
+                      href={href}
+                      className={`inline-flex min-h-12 w-full items-center justify-center rounded-full border px-5 text-sm font-semibold transition ${
+                        ready
+                          ? 'border-[#e7b6a4] bg-[#f7c7b6] text-[#4a3c31] hover:bg-[#f4bba8]'
+                          : 'border-[#d8cfc4] bg-white text-[#4a3c31] hover:bg-[#f8f1e8]'
+                      }`}
+                    >
+                      {ready ? 'Open Capsule' : 'View Status'}
+                    </Link>
                   </div>
                 </div>
               );

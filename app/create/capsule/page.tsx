@@ -122,19 +122,25 @@ export default function CreateCapsulePage() {
                 <dd className="mt-1 text-[#4a3c31]">{createdCapsule.unlockDate}</dd>
               </div>
             </dl>
-            <p className="mt-5 break-all rounded-2xl border border-[#eadfce] bg-[#F5F0E6] px-4 py-3 text-sm text-[#4a3c31]">
-              {shareUrl}
-            </p>
+            <div className="mt-6 rounded-[1.5rem] border border-[#eadfce] bg-[#F5F0E6] p-5 text-center">
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-gray-500">
+                Invite people to add memories
+              </p>
+              <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-gray-600">
+                Anyone with this link can add a memory until the deadline. They
+                will not be able to view other submissions.
+              </p>
+              <button
+                type="button"
+                onClick={copyShareLink}
+                className="mt-5 inline-flex min-h-12 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-6 text-sm font-semibold text-[#4a3c31] shadow transition hover:bg-[#f4bba8]"
+              >
+                {copied ? 'Copied!' : 'Copy Share Link'}
+              </button>
+            </div>
           </div>
 
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <button
-              type="button"
-              onClick={copyShareLink}
-              className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-6 text-sm font-semibold text-[#4a3c31] shadow transition hover:bg-[#f4bba8]"
-            >
-              {copied ? 'Link Copied' : 'Copy Share Link'}
-            </button>
             <Link
               href={statusPath}
               className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#d8cfc4] bg-white px-6 text-sm font-semibold text-[#4a3c31] shadow-sm transition hover:bg-[#f8f1e8]"
