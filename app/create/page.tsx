@@ -47,7 +47,7 @@ export default function CreatePage() {
               Create a Capsule
             </h2>
             <p className="mt-3 text-sm leading-7 text-gray-600">
-              Invite others to contribute hidden memories, then unlock the full
+              Invite others to contribute memories, then unlock the full
               collection when the day arrives.
             </p>
             <span className={OPTION_BUTTON_CLASS}>Choose Capsule</span>

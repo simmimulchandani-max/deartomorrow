@@ -4,7 +4,6 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateId } from '@/lib/generateId';
 import { buildMemoryPath } from '@/lib/memoryPaths';
-import { getSupabaseClient } from '@/lib/supabaseClient';
 import {
   MAX_MEDIA_FILES,
   MEMORY_MESSAGE_MAX,
@@ -34,16 +33,16 @@ export default function CreateMemoryPage() {
     e.preventDefault();
     setLoading(true);
 
-    const supabase = getSupabaseClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
     try {
+      const { getSupabaseClient } = await import('@/lib/supabaseClient');
+      const supabase = getSupabaseClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (!user || !session) {
         throw new Error('Please log in before creating a memory.');
       }
@@ -391,12 +390,13 @@ export default function CreateMemoryPage() {
             PHOTOS OR VIDEOS
           </label>
 
-          <div
-            className="w-full border-2 border-dashed border-gray-300 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition"
+          <button
+            type="button"
+            className="w-full border-2 border-dashed border-gray-300 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition focus:outline-none focus:ring-2 focus:ring-gray-400"
             onClick={handleFileClick}
           >
             <p className="text-gray-500">Upload photos or videos</p>
-          </div>
+          </button>
 
           <input
             type="file"
@@ -420,10 +420,30 @@ export default function CreateMemoryPage() {
 
         {/* UNLOCK DATE */}
         <div>
-          <label className="block mb-2 font-medium text-gray-700">
-            UNLOCK DATE
-          </label>
+          <div className="mb-2 flex items-center gap-2">
+            <label htmlFor="unlock-date" className="font-medium text-gray-700">
+              UNLOCK DATE
+            </label>
+            <span className="group relative inline-flex">
+              <button
+                type="button"
+                aria-label="Unlock date help"
+                aria-describedby="unlock-date-help"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#fffaf2] text-xs font-bold text-[#4a3c31] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#d79a87] focus:ring-offset-2"
+              >
+                i
+              </button>
+              <span
+                id="unlock-date-help"
+                role="tooltip"
+                className="pointer-events-none absolute left-1/2 top-8 z-10 w-64 -translate-x-1/2 rounded-2xl border border-[#eadfce] bg-[#fffaf2] px-4 py-3 text-sm font-normal leading-6 text-[#5f5147] opacity-0 shadow-lg transition group-hover:opacity-100 group-focus-within:opacity-100 sm:left-0 sm:translate-x-0"
+              >
+                Choose the future date when this memory becomes available to open.
+              </span>
+            </span>
+          </div>
           <input
+            id="unlock-date"
             type="date"
             value={unlockDate}
             onChange={(e) => setUnlockDate(e.target.value)}

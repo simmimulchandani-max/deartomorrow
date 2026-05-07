@@ -94,36 +94,56 @@ export default function Home() {
   return (
     <main className="relative flex min-h-[calc(100vh-9rem)] items-center justify-center overflow-hidden bg-[linear-gradient(180deg,_#fff8e5_0%,_#f1e3c6_46%,_#d6ebf5_100%)] px-6 py-16">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[-8%] top-[-4%] h-72 w-72 rounded-full bg-white/55 blur-3xl" />
-        <div className="absolute right-[-8%] top-[10%] h-96 w-96 rounded-full bg-[#f8d8c9]/35 blur-3xl" />
-        <div className="absolute left-[8%] top-[30%] h-44 w-44 rounded-full bg-[#fff2d8]/45 blur-2xl" />
-        <div className="absolute right-[18%] top-[28%] h-36 w-36 rounded-full bg-sky-100/50 blur-2xl" />
         <div className="absolute bottom-[-18%] left-1/2 h-80 w-[140%] -translate-x-1/2 rounded-[100%] bg-[radial-gradient(ellipse_at_center,_rgba(245,233,210,0.95)_0%,_rgba(236,221,194,0.88)_42%,_rgba(233,216,188,0)_75%)]" />
         <div className="absolute bottom-[12%] left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent" />
         <div className="absolute inset-x-0 top-[18%] h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
       </div>
 
-      <section className="relative w-full max-w-5xl">
-        <div className="mx-auto flex max-w-3xl flex-col items-center rounded-[2.25rem] border border-white/60 bg-white/50 px-8 py-14 text-center shadow-[0_30px_120px_rgba(88,110,124,0.16)] backdrop-blur-md sm:px-14 sm:py-20">
-          <h1
-            className={`${brandFont.className} text-elevated mt-6 text-6xl leading-[0.95] sm:text-7xl md:text-8xl`}
-            style={{
-              letterSpacing: "0.04em",
-              textShadow:
-                "0 2px 4px rgba(255,248,229,0.7), 0 6px 18px rgba(74,60,49,0.18)",
-            }}
-          >
-            Until Tomorrow {/* new branding text */}
-          </h1>
-          <p className="text-elevated mt-6 max-w-2xl text-lg leading-8 sm:text-xl">
-            Leave something for your future self
-          </p>
-          <p className="text-elevated mt-4 max-w-xl text-sm leading-7 tracking-[0.02em] sm:text-base">
-            Capture a feeling, a hope, or a small memory and let it wait for
-            you like a note tucked into the tide.
-          </p>
+      <section className="relative w-full max-w-6xl">
+        <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1.02fr)_minmax(320px,0.98fr)]">
+          <div className="rounded-[2rem] border border-white/60 bg-white/55 px-7 py-12 text-center shadow-[0_30px_120px_rgba(88,110,124,0.16)] backdrop-blur-md sm:px-12 lg:text-left">
+            <h1
+              className={`${brandFont.className} text-elevated text-5xl leading-[0.98] sm:text-7xl md:text-8xl`}
+              style={{
+                letterSpacing: "0.04em",
+                textShadow:
+                  "0 2px 4px rgba(255,248,229,0.7), 0 6px 18px rgba(74,60,49,0.18)",
+              }}
+            >
+              Until Tomorrow
+            </h1>
+            <p className="text-elevated mt-6 max-w-2xl text-lg leading-8 sm:text-xl">
+              Create a memory today, lock it until a future date, then come
+              back later to relive it when the moment is ready.
+            </p>
+            <p className="text-elevated mt-4 max-w-2xl text-sm leading-7 tracking-[0.02em] sm:text-base">
+              Save birthday notes, trip reflections, wedding wishes,
+              milestone snapshots, or a message to your future self. Until
+              Tomorrow keeps it tucked away until the date you choose.
+            </p>
 
-          <div className="mt-10 w-full max-w-md">
+            <div className="mt-7 grid gap-3 text-left sm:grid-cols-3">
+              {[
+                ["1", "Write it now", "Capture the feeling while it is still close."],
+                ["2", "Lock the date", "Pick the day it becomes available to open."],
+                ["3", "Relive it later", "Return to a note that waited for you."],
+              ].map(([step, title, copy]) => (
+                <div
+                  key={step}
+                  className="rounded-2xl border border-white/70 bg-white/55 p-4 shadow-sm"
+                >
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#f7c7b6] text-sm font-bold text-[#4a3c31]">
+                    {step}
+                  </span>
+                  <h2 className="mt-3 text-sm font-bold uppercase tracking-[0.14em] text-[#4a3c31]">
+                    {title}
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-[#6f6259]">{copy}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10 w-full max-w-md lg:max-w-lg">
             {/* Homepage login buttons and feedback states */}
             {isCheckingSession ? (
               <div className="rounded-[1.75rem] border border-white/70 bg-white/60 px-6 py-6 text-center shadow-inner">
@@ -181,8 +201,54 @@ export default function Home() {
                 ) : null}
               </form>
             )}
+            </div>
           </div>
-          
+
+          <aside
+            aria-label="Example unlocked memory"
+            className="relative mx-auto w-full max-w-md px-2 sm:px-0"
+          >
+            <div className="rotate-[-1.5deg] rounded-[1.75rem] border border-[#eadfce] bg-[#fffaf2] p-4 shadow-[0_24px_80px_rgba(74,60,49,0.18)]">
+              <div className="rounded-[1.25rem] bg-[linear-gradient(145deg,_#f7c7b6_0%,_#fff2d8_52%,_#d6ebf5_100%)] p-5">
+                <div className="flex min-h-52 items-center justify-center rounded-[1rem] border border-white/60 bg-white/35">
+                  <div className="text-center">
+                    <span className="block text-5xl">+</span>
+                    <span className="mt-3 block text-xs font-bold uppercase tracking-[0.2em] text-[#6b594d]">
+                      Photo or video
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="px-3 pb-3 pt-5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#8a786d]">
+                    Unlocked
+                  </p>
+                  <p className="rounded-full border border-[#d7e6ee] bg-[#edf8fb] px-3 py-1 text-xs font-semibold text-[#4a6270]">
+                    June 12, 2027
+                  </p>
+                </div>
+                <h2
+                  className={`${brandFont.className} mt-4 text-3xl leading-tight text-[#4a3c31]`}
+                >
+                  The morning after our first big trip
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-[#62544a]">
+                  We promised we would remember how brave this felt: the
+                  wrinkled map, the rain on the train window, and laughing
+                  because none of it went exactly to plan.
+                </p>
+                <div className="mt-5 flex items-center justify-between border-t border-[#eadfce] pt-4 text-xs uppercase tracking-[0.16em] text-[#8a786d]">
+                  <span>Memory opened</span>
+                  <span>Until Tomorrow</span>
+                </div>
+              </div>
+            </div>
+            <div className="mx-auto mt-5 max-w-sm rounded-full border border-white/70 bg-white/45 px-5 py-3 text-center text-sm leading-6 text-[#5f5147] shadow-sm">
+              A little time capsule for birthdays, trips, weddings,
+              milestones, and future-you.
+            </div>
+          </aside>
         </div>
       </section>
     </main>
