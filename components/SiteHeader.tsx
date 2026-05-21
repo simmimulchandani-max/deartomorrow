@@ -283,13 +283,13 @@ export default function SiteHeader() {
                   <p className="truncate rounded-2xl px-5 py-4 text-sm font-semibold text-[#4a3c31]">
                     {user.email}
                   </p>
-                  <button
-                    type="button"
-                    onClick={openFeedbackModal}
+                  <Link
+                    href="/feedback"
+                    onClick={() => setIsUserMenuOpen(false)}
                     className="block w-full rounded-2xl px-5 py-4 text-left text-lg font-semibold tracking-[0.08em] text-[#4a3c31] transition hover:bg-[#f7c7b6]"
                   >
                     Send feedback
-                  </button>
+                  </Link>
                   <button
                     type="button"
                     onClick={handleLogout}
