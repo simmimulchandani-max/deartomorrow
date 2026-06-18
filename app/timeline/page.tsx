@@ -66,10 +66,13 @@ function WaitingWaveCard({ label = 'Waiting to bloom' }: { label?: string }) {
 
 export default function TimelinePage() {
   const [memories, setMemories] = useState<Memory[]>([]);
+  const [memoryCount, setMemoryCount] = useState(0);
   const [capsules, setCapsules] = useState<Capsule[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [memoryToDelete, setMemoryToDelete] = useState<Memory | null>(null);
+  const [deletingMemoryId, setDeletingMemoryId] = useState<string | null>(null);
 
   useEffect(() => {
     const deleteToast = window.sessionStorage.getItem('memoryDeleteToast');
@@ -90,16 +93,21 @@ export default function TimelinePage() {
         const user = session?.user ?? null;
         if (!user || !session) {
           setMemories([]);
+          setMemoryCount(0);
           setCapsules([]);
           return;
         }
 
-        const [memoryResult, capsuleResult] = await Promise.all([
+        const [memoryResult, memoryCountResult, capsuleResult] = await Promise.all([
           supabase
             .from('memories')
             .select('id, title, unlock_date, user_id, media_url')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false }),
+          supabase
+            .from('memories')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id),
           fetch('/api/capsules', {
             headers: {
               Authorization: `Bearer ${session.access_token}`,
@@ -112,7 +120,13 @@ export default function TimelinePage() {
           setMemories([]);
           setErrorMessage('Unable to load timeline right now. Please refresh.');
         } else {
-          setMemories((memoryResult.data as Memory[]) ?? []);
+          const nextMemories = (memoryResult.data as Memory[]) ?? [];
+          setMemories(nextMemories);
+          setMemoryCount(memoryCountResult.count ?? nextMemories.length);
+        }
+
+        if (memoryCountResult.error) {
+          console.error('Error loading memory count:', memoryCountResult.error);
         }
 
         const capsulePayload = await capsuleResult.json().catch(() => null);
@@ -126,6 +140,7 @@ export default function TimelinePage() {
       } catch (error) {
         console.error('Timeline loading error:', error);
         setMemories([]);
+        setMemoryCount(0);
         setCapsules([]);
         setErrorMessage('Unable to load timeline right now. Please refresh.');
       } finally {
@@ -136,7 +151,62 @@ export default function TimelinePage() {
     void fetchMemories();
   }, []);
 
-  const totalCount = memories.length;
+  async function handleConfirmDelete() {
+    if (!memoryToDelete) {
+      return;
+    }
+
+    const memory = memoryToDelete;
+    const previousMemories = memories;
+    const previousCount = memoryCount;
+
+    try {
+      setDeletingMemoryId(memory.id);
+      setErrorMessage('');
+      setSuccessMessage('');
+
+      const supabase = getSupabaseClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error('Please log in before deleting this memory.');
+      }
+
+      setMemories((current) => current.filter((item) => item.id !== memory.id));
+      setMemoryCount((current) => Math.max(0, current - 1));
+      setMemoryToDelete(null);
+
+      const response = await fetch(`/api/memories/${memory.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to delete memory.');
+      }
+
+      setSuccessMessage('Memory deleted successfully.');
+    } catch (error) {
+      setMemories(previousMemories);
+      setMemoryCount(previousCount);
+      setMemoryToDelete(memory);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Something went wrong deleting this memory.'
+      );
+    } finally {
+      setDeletingMemoryId(null);
+    }
+  }
+
+  const totalCount = memoryCount;
   const readyCount = memories.filter((memory) =>
     isReadyToUnlock(memory.unlock_date)
   ).length;
@@ -172,10 +242,13 @@ export default function TimelinePage() {
         <div className="mb-8 grid gap-4 sm:grid-cols-3">
           <div className="rounded-[1.75rem] border border-white/70 bg-gray-100 p-6 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
-              Total Memories
+              Your Memories
             </p>
-            <p className="mt-3 text-4xl font-semibold text-[#4a3c31]">
-              {loading ? '--' : totalCount}
+            <p className="mt-3 break-words text-4xl font-semibold text-[#4a3c31]">
+              {loading ? '--' : `${totalCount} ${totalCount === 1 ? 'Memory' : 'Memories'}`}
+            </p>
+            <p className="mt-2 text-sm text-gray-500">
+              {loading ? 'Counting saved memories...' : `You have ${totalCount} ${totalCount === 1 ? 'memory' : 'memories'} saved`}
             </p>
           </div>
 
@@ -257,13 +330,26 @@ export default function TimelinePage() {
                   key={memory.id}
                   className="rounded-[1.75rem] border border-white/70 bg-gray-100 p-6 shadow-sm"
                 >
-                  <div>
-                    <h2 className="text-xl font-semibold text-[#4a3c31]">
-                      {memory.title || 'Untitled Memory'}
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {ready ? 'Ready to unlock' : 'Waiting to bloom'}
-                    </p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="max-w-full break-words text-xl font-semibold text-[#4a3c31]">
+                        {memory.title || 'Untitled Memory'}
+                      </h2>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {ready ? 'Ready to unlock' : 'Waiting to bloom'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorMessage('');
+                        setMemoryToDelete(memory);
+                      }}
+                      disabled={deletingMemoryId === memory.id}
+                      className="shrink-0 rounded-full border border-red-200 bg-white/70 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Delete
+                    </button>
                   </div>
 
                   <div className="mt-5 rounded-[1.5rem] bg-white/70 p-4">
@@ -275,7 +361,7 @@ export default function TimelinePage() {
                     </p>
                   </div>
 
-                  <div className="mt-5">
+                  <div className="mt-5 flex flex-col gap-3">
                     {ready ? (
                       <Link
                         href={buildMemoryPath(memory.id)}
@@ -312,10 +398,10 @@ export default function TimelinePage() {
                     <div className="mb-3 inline-flex rounded-full border border-[#e7b6a4] bg-[#f7c7b6]/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#4a3c31]">
                       Capsule
                     </div>
-                    <h2 className="text-xl font-semibold text-[#4a3c31]">
+                    <h2 className="max-w-full break-words text-xl font-semibold text-[#4a3c31]">
                       {capsule.title || 'Untitled Capsule'}
                     </h2>
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className="mt-1 max-w-full break-words text-sm text-gray-500">
                       {ready ? 'Ready to open' : `Locked until ${formatUnlockDate(capsule.unlockDate)}`}
                     </p>
                   </div>
@@ -348,6 +434,40 @@ export default function TimelinePage() {
           </div>
         )}
       </div>
+
+      {memoryToDelete ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#4a3c31]/45 px-4 backdrop-blur-sm">
+          <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-[2rem] bg-[#F5F0E6] p-6 text-center shadow-[0_24px_80px_rgba(74,60,49,0.28)] sm:p-7">
+            <h2 className="text-2xl font-semibold text-[#4a3c31]">
+              Delete Memory?
+            </h2>
+
+            <p className="mt-3 max-w-full break-words text-sm leading-7 text-[#6b5a4f] sm:text-base">
+              This action cannot be undone. This memory and all associated media will be permanently deleted.
+            </p>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={() => setMemoryToDelete(null)}
+                disabled={Boolean(deletingMemoryId)}
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#d8cfc4] bg-white px-5 text-sm font-semibold tracking-[0.08em] text-[#4a3c31] shadow-sm transition hover:bg-[#f8f1e8] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={Boolean(deletingMemoryId)}
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-red-300 bg-red-400 px-5 text-sm font-semibold tracking-[0.08em] text-white shadow transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deletingMemoryId ? 'Deleting...' : 'Delete Memory'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

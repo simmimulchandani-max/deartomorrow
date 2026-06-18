@@ -52,10 +52,10 @@ export default async function MemoryPage({ params }: MemoryPageProps) {
           <p className="text-sm font-semibold tracking-[0.16em] text-gray-500">
             LOCKED MEMORY
           </p>
-          <h1 className="mt-3 text-3xl font-semibold text-[#4a3c31] sm:text-4xl">
+          <h1 className="mt-3 max-w-full break-words text-3xl font-semibold text-[#4a3c31] sm:text-4xl">
             {memorySummary.title}
           </h1>
-          <p className="mt-4 text-sm leading-7 text-gray-600 sm:text-base">
+          <p className="mt-4 max-w-full break-words text-sm leading-7 text-gray-600 sm:text-base">
             This memory is still waiting. It opens on {unlockDateLabel}.
           </p>
         </section>

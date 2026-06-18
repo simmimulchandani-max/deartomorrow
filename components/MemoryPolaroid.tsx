@@ -169,44 +169,44 @@ export default function MemoryPolaroid({
   }
 
   async function handleDelete() {
-  try {
-    setIsDeleting(true);
-    setDeleteError("");
-    const supabase = getSupabaseClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    try {
+      setIsDeleting(true);
+      setDeleteError("");
+      const supabase = getSupabaseClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    if (!session) {
-      throw new Error("Please log in before deleting this memory.");
+      if (!session) {
+        throw new Error("Please log in before deleting this memory.");
+      }
+
+      const res = await fetch(`/api/memories/${memoryId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to delete memory.");
+      }
+
+      setShowDeleteModal(false);
+      window.sessionStorage.setItem("memoryDeleteToast", "Memory deleted successfully.");
+      window.location.href = "/timeline";
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Something went wrong deleting this memory."
+      );
+      setShowDeleteModal(false);
+    } finally {
+      setIsDeleting(false);
     }
-
-    const res = await fetch(`/api/memories/${memoryId}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    });
-
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok) {
-      throw new Error(data?.error || "Failed to delete memory.");
-    }
-
-    setShowDeleteModal(false);
-    window.sessionStorage.setItem("memoryDeleteToast", "Memory deleted successfully.");
-    window.location.href = "/timeline";
-  } catch (err) {
-    setDeleteError(
-      err instanceof Error ? err.message : "Something went wrong deleting this memory."
-    );
-    setShowDeleteModal(false);
-  } finally {
-    setIsDeleting(false);
   }
-}
 
   function goToPrevious() {
     if (totalItems < 2) {
@@ -225,15 +225,15 @@ export default function MemoryPolaroid({
   }
 
   return (
-    <section className="relative isolate min-h-screen overflow-hidden bg-[#4a3c31]">
+    <section className="relative isolate min-h-screen overflow-x-hidden bg-[#4a3c31]">
       <UnlockWaveBackground />
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col items-center justify-start px-4 pb-16 pt-16 text-center sm:px-6 sm:pb-20 sm:pt-20">
         <div className="absolute left-1/2 top-[3%] h-[28rem] w-[30rem] -translate-x-1/2 rounded-full bg-[#F5F0E6]/76 blur-3xl" />
 
-        <div className="relative z-10 flex w-full flex-col items-center">
+        <div className="relative z-10 flex w-full min-w-0 flex-col items-center">
           <h1
-            className={`${handwritten.className} mt-3 text-[2.8rem] leading-none text-[#4a3c31] sm:text-[3.4rem]`}
+            className={`${handwritten.className} mt-3 max-w-full break-words text-[2.8rem] leading-none text-[#4a3c31] sm:text-[3.4rem]`}
           >
             {title}
           </h1>
@@ -241,13 +241,13 @@ export default function MemoryPolaroid({
           <p className="mt-2 text-sm font-medium text-white">{unlockDateLabel}</p>
 
           {!hasMedia ? (
-            <p className="mt-2 max-w-md text-sm leading-7 text-[#4a3c31] sm:text-base">
+            <p className="mt-2 max-w-full break-words text-sm leading-7 text-[#4a3c31] sm:max-w-md sm:text-base">
               A quiet piece of your story, saved here like something held
               between pages.
             </p>
           ) : null}
 
-          <article className="mt-5 w-full max-w-[min(600px,88vw)] rotate-[-1.5deg] rounded-[2rem] bg-gray-100 p-4 pb-9 shadow-[0_28px_80px_rgba(74,60,49,0.32)] sm:mt-6 sm:p-5 sm:pb-11 lg:w-[600px] lg:max-w-[600px] lg:max-h-[95vh] lg:pb-12">
+          <article className="mt-5 w-full max-w-[min(600px,88vw)] rotate-[-1.5deg] rounded-[2rem] bg-gray-100 p-4 pb-9 shadow-[0_28px_80px_rgba(74,60,49,0.32)] sm:mt-6 sm:p-5 sm:pb-11 lg:w-[600px] lg:max-w-[600px] lg:pb-12">
             <div className="overflow-hidden rounded-[1.5rem] bg-[#f8f1e8] shadow-inner">
               <div className="relative aspect-[4/5] max-h-[72vh] overflow-hidden lg:max-h-[70vh]">
                 {hasMedia ? (
@@ -320,17 +320,17 @@ export default function MemoryPolaroid({
               ) : null}
             </div>
 
-            <div className="px-3 pt-8 sm:px-4 sm:pt-9 lg:pt-10">
-              <p className="whitespace-pre-wrap text-center text-sm leading-7 text-[#4a3c31] sm:text-base sm:leading-8 lg:text-lg">
+            <div className="min-w-0 max-w-full px-3 pt-8 sm:px-4 sm:pt-9 lg:pt-10">
+              <p className="max-w-full whitespace-pre-wrap break-words text-center text-sm leading-7 text-[#4a3c31] sm:text-base sm:leading-8 lg:text-lg">
                 {message}
               </p>
-              <p className="mt-6 text-center text-sm text-gray-500">
+              <p className="mt-6 max-w-full break-words text-center text-sm text-gray-500">
                 Saved {createdAtLabel}
               </p>
             </div>
           </article>
 
-          <div className="mt-6 flex max-w-[24rem] flex-wrap items-center justify-center gap-3 sm:mt-8 sm:max-w-none">
+          <div className="mt-6 flex max-w-full flex-wrap items-center justify-center gap-3 sm:mt-8">
             <ShareIconButton href={shareLinks.twitter} label="Share on X">
               <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-current">
                 <path d="M18.9 3H22l-6.8 7.8L23 21h-6.1l-4.8-6.3L6.6 21H3.5l7.3-8.3L3 3h6.2l4.3 5.8L18.9 3Zm-1.1 16h1.7L8.3 4.9H6.5L17.8 19Z" />
@@ -380,7 +380,7 @@ export default function MemoryPolaroid({
           </div>
 
           {deleteError ? (
-            <p className="mt-4 max-w-md rounded-2xl bg-[#F5F0E6]/90 px-4 py-3 text-sm text-[#8a3d2f] shadow">
+            <p className="mt-4 max-w-full break-words rounded-2xl bg-[#F5F0E6]/90 px-4 py-3 text-sm text-[#8a3d2f] shadow sm:max-w-md">
               {deleteError}
             </p>
           ) : null}
@@ -389,7 +389,7 @@ export default function MemoryPolaroid({
 
       {showDeleteModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#4a3c31]/45 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-[2rem] bg-[#F5F0E6] p-6 text-center shadow-[0_24px_80px_rgba(74,60,49,0.28)] sm:p-7">
+          <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-[2rem] bg-[#F5F0E6] p-6 text-center shadow-[0_24px_80px_rgba(74,60,49,0.28)] sm:p-7">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#f7c7b6] text-3xl shadow-sm">
               🗑️
             </div>
@@ -398,7 +398,7 @@ export default function MemoryPolaroid({
               Delete Memory?
             </h2>
 
-            <p className="mt-3 text-sm leading-7 text-[#6b5a4f] sm:text-base">
+            <p className="mt-3 max-w-full break-words text-sm leading-7 text-[#6b5a4f] sm:text-base">
               This action cannot be undone. Your memory and all associated photos/videos will be permanently deleted.
             </p>
 

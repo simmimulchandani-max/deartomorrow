@@ -99,7 +99,7 @@ export default function ProtectedMemoryGate({
           <div className="absolute left-1/2 top-[3%] h-[28rem] w-[30rem] -translate-x-1/2 rounded-full bg-[#F5F0E6]/76 blur-3xl" />
 
           <h1
-            className={`${handwritten.className} relative z-10 mt-3 text-[2.8rem] leading-none text-[#4a3c31] sm:text-[3.4rem]`}
+            className={`${handwritten.className} relative z-10 mt-3 max-w-full break-words text-[2.8rem] leading-none text-[#4a3c31] sm:text-[3.4rem]`}
           >
             {title}
           </h1>
@@ -110,14 +110,14 @@ export default function ProtectedMemoryGate({
               <p className="text-sm font-semibold tracking-[0.18em] text-gray-500">
                 PROTECTED MEMORY
               </p>
-              <p className="mt-5 text-base leading-8 text-[#4a3c31]">
+              <p className="mt-5 max-w-full break-words text-base leading-8 text-[#4a3c31]">
                 This memory is waiting behind a password. Enter it to reveal the
                 note and its keepsakes.
               </p>
 
               <div className="mt-6 rounded-2xl border border-[#eadfce] bg-gray-100 px-4 py-4 text-left">
-                <p className="text-sm text-gray-600">Unlocks {unlockDateLabel}</p>
-                <p className="mt-1 text-sm text-gray-600">Saved {createdAtLabel}</p>
+                <p className="max-w-full break-words text-sm text-gray-600">Unlocks {unlockDateLabel}</p>
+                <p className="mt-1 max-w-full break-words text-sm text-gray-600">Saved {createdAtLabel}</p>
               </div>
             </div>
 
