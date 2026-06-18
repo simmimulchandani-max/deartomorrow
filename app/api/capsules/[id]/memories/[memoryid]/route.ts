@@ -1,4 +1,3 @@
-import { NextRequest } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { getCapsuleByShareSlug } from "@/lib/capsules";
 import { isSafeIdentifier } from "@/lib/validation";
@@ -10,10 +9,7 @@ type RouteContext = {
   };
 };
 
-export async function DELETE(
-  request: NextRequest,
-  context: RouteContext
-) {
+export async function DELETE(request: Request, context: RouteContext) {
   try {
     const { id, memoryid } = context.params;
 

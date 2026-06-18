@@ -17,6 +17,7 @@ type RouteContext = {
   };
 };
 
+
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const user = await getUserFromRequest(request);
