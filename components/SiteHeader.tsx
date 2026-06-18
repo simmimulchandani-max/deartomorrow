@@ -351,6 +351,13 @@ export default function SiteHeader() {
                 >
                   About
                 </Link>
+                <Link
+                  href="/feedback"
+                  onClick={closeMenu}
+                  className="block rounded-2xl px-5 py-4 text-lg font-semibold tracking-[0.08em] text-[#4a3c31] transition hover:bg-[#f7c7b6]"
+                >
+                  Send feedback
+                </Link>
               </div>
             ) : null}
           </div>

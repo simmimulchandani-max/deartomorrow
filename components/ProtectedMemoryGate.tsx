@@ -13,6 +13,7 @@ const handwritten = Caveat({
 
 type ProtectedMemoryGateProps = {
   memoryId: string;
+  ownerUserId?: string | null;
   title: string;
   unlockDateLabel: string;
   createdAtLabel: string;
@@ -29,6 +30,7 @@ const BUTTON_CLASS =
 
 export default function ProtectedMemoryGate({
   memoryId,
+  ownerUserId = null,
   title,
   unlockDateLabel,
   createdAtLabel,
@@ -78,6 +80,7 @@ export default function ProtectedMemoryGate({
     return (
       <MemoryPolaroid
         memoryId={memoryId}
+        ownerUserId={ownerUserId}
         title={memory.title}
         message={memory.message}
         unlockDateLabel={unlockDateLabel}

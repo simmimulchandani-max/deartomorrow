@@ -76,7 +76,7 @@ async function handleUnlockEmailRequest(request: Request) {
     hasSiteUrl: Boolean(siteUrl),
     hasSupabaseUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
     hasSupabaseServiceRole: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-    vercelCronSchedule: "0 * * * *",
+    vercelCronSchedule: "0 13 * * *",
     cronTimezone: "UTC",
   });
 
@@ -259,7 +259,7 @@ async function sendMemoryUnlockEmails(input: {
         resend: input.resend,
         from: input.from,
         to: recipient,
-        subject: "Your memory is ready to open",
+        subject: "Your memory is ready \uD83D\uDC8C",
         text: template.text,
         react: template.react,
         runId: input.runId,
@@ -408,7 +408,7 @@ async function fetchUnsentMemories(
     .from("memories")
     .select("id, user_id, unlock_date")
     .lte("unlock_date", today)
-    .is("unlock_email_sent_at", null)
+    .eq("unlocked_email_sent", false)
     .not("user_id", "is", null)
     .order("unlock_date", { ascending: true })
     .limit(MAX_RECORDS_PER_TYPE);
@@ -505,16 +505,29 @@ async function markEmailSent(input: {
   runId: string;
   resendId: string | null;
 }) {
-  const { data, error } = await input.supabase
+  const now = new Date().toISOString();
+  const update =
+    input.table === "memories"
+      ? {
+          unlocked_email_sent: true,
+          unlocked_email_sent_at: now,
+          unlock_email_sent_at: now,
+          unlock_email_last_error: null,
+        }
+      : {
+          unlock_email_sent_at: now,
+          unlock_email_last_error: null,
+        };
+  const query = input.supabase
     .from(input.table)
-    .update({
-      unlock_email_sent_at: new Date().toISOString(),
-      unlock_email_last_error: null,
-    })
+    .update(update)
     .eq("id", input.id)
-    .is("unlock_email_sent_at", null)
-    .select("id")
-    .maybeSingle();
+    .select("id");
+
+  const { data, error } =
+    input.table === "memories"
+      ? await query.eq("unlocked_email_sent", false).maybeSingle()
+      : await query.is("unlock_email_sent_at", null).maybeSingle();
 
   if (error) {
     throw new Error(`Failed marking ${input.table} ${input.id} emailed: ${error.message}`);
@@ -545,17 +558,20 @@ async function claimEmailAttempt(input: {
   runId: string;
 }) {
   const staleCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-  const { data, error } = await input.supabase
+  const query = input.supabase
     .from(input.table)
     .update({
       unlock_email_attempted_at: new Date().toISOString(),
       unlock_email_last_error: null,
     })
     .eq("id", input.id)
-    .is("unlock_email_sent_at", null)
     .or(`unlock_email_attempted_at.is.null,unlock_email_attempted_at.lt.${staleCutoff}`)
-    .select("id")
-    .maybeSingle();
+    .select("id");
+
+  const { data, error } =
+    input.table === "memories"
+      ? await query.eq("unlocked_email_sent", false).maybeSingle()
+      : await query.is("unlock_email_sent_at", null).maybeSingle();
 
   if (error) {
     throw new Error(`Failed claiming ${input.table} ${input.id}: ${error.message}`);

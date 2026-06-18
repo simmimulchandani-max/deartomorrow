@@ -15,6 +15,7 @@ const handwritten = Caveat({
 
 type MemoryPolaroidProps = {
   memoryId: string;
+  ownerUserId?: string | null;
   title: string;
   message: string;
   unlockDateLabel: string;
@@ -52,6 +53,7 @@ function ShareIconButton({
 
 export default function MemoryPolaroid({
   memoryId,
+  ownerUserId = null,
   title,
   message,
   unlockDateLabel,
@@ -65,6 +67,7 @@ export default function MemoryPolaroid({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [canDelete, setCanDelete] = useState(false);
 
   const totalItems = mediaUrls.length;
   const hasMedia = totalItems > 0;
@@ -109,6 +112,38 @@ export default function MemoryPolaroid({
       disableForReducedMotion: true,
     });
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function checkDeletePermission() {
+      if (!ownerUserId) {
+        setCanDelete(false);
+        return;
+      }
+
+      try {
+        const supabase = getSupabaseClient();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (active) {
+          setCanDelete(session?.user.id === ownerUserId);
+        }
+      } catch {
+        if (active) {
+          setCanDelete(false);
+        }
+      }
+    }
+
+    void checkDeletePermission();
+
+    return () => {
+      active = false;
+    };
+  }, [ownerUserId]);
 
   async function handleCopyLink() {
     try {
@@ -161,6 +196,7 @@ export default function MemoryPolaroid({
     }
 
     setShowDeleteModal(false);
+    window.sessionStorage.setItem("memoryDeleteToast", "Memory deleted successfully.");
     window.location.href = "/timeline";
   } catch (err) {
     setDeleteError(
@@ -329,7 +365,7 @@ export default function MemoryPolaroid({
               {copied ? "Link Copied" : "Copy Link"}
             </button>
 
-            {showDeleteButton ? (
+            {showDeleteButton && canDelete ? (
               <button
                 type="button"
                 onClick={() => {
@@ -359,11 +395,11 @@ export default function MemoryPolaroid({
             </div>
 
             <h2 className="text-2xl font-semibold text-[#4a3c31]">
-              Delete memory?
+              Delete Memory?
             </h2>
 
             <p className="mt-3 text-sm leading-7 text-[#6b5a4f] sm:text-base">
-              This can’t be undone. Once it’s gone, it’s gone.
+              This action cannot be undone. Your memory and all associated photos/videos will be permanently deleted.
             </p>
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
@@ -373,7 +409,7 @@ export default function MemoryPolaroid({
                 disabled={isDeleting}
                 className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#d8cfc4] bg-white px-5 text-sm font-semibold tracking-[0.08em] text-[#4a3c31] shadow-sm transition hover:bg-[#f8f1e8] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Keep It
+                Cancel
               </button>
 
               <button
@@ -382,7 +418,7 @@ export default function MemoryPolaroid({
                 disabled={isDeleting}
                 className="inline-flex min-h-11 items-center justify-center rounded-full border border-red-300 bg-red-400 px-5 text-sm font-semibold tracking-[0.08em] text-white shadow transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isDeleting ? "Deleting..." : "Delete Forever"}
+                {isDeleting ? "Deleting..." : "Delete Memory"}
               </button>
             </div>
           </div>

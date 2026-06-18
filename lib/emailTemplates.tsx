@@ -111,17 +111,17 @@ export function buildMemoryUnlockEmailTemplate(link: string) {
     react: (
       <UnlockEmailTemplate
         heading="Your memory is ready."
-        line="A moment you left for yourself is waiting to be opened."
-        ctaLabel="Open Memory"
+        line="Your memory in Until Tomorrow is ready to be unlocked. Click below to revisit the moment you saved for yourself."
+        ctaLabel="Unlock My Memory"
         ctaUrl={link}
       />
     ),
     text: [
-      "Your memory is ready.",
+      "Your memory in Until Tomorrow is ready to be unlocked.",
       "",
-      "A moment you left for yourself is waiting to be opened.",
+      "Click below to revisit the moment you saved for yourself.",
       "",
-      `Open memory: ${link}`,
+      `Unlock My Memory: ${link}`,
       "",
       "With care,",
       "Until Tomorrow",

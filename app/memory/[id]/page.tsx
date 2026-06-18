@@ -78,6 +78,7 @@ export default async function MemoryPage({ params }: MemoryPageProps) {
       {memorySummary.hasPassword ? (
         <ProtectedMemoryGate
           memoryId={memorySummary.id}
+          ownerUserId={memorySummary.userId}
           title={memorySummary.title}
           unlockDateLabel={unlockDateLabel}
           createdAtLabel={createdAtLabel ?? "Just now"}
@@ -85,6 +86,7 @@ export default async function MemoryPage({ params }: MemoryPageProps) {
       ) : (
         <MemoryPolaroid
           memoryId={memorySummary.id}
+          ownerUserId={visibleMemory!.userId}
           title={visibleMemory!.title}
           message={visibleMemory!.message}
           unlockDateLabel={unlockDateLabel}

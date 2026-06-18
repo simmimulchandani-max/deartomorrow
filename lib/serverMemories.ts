@@ -5,6 +5,7 @@ import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 type RawMemoryRecord = {
   id: string;
+  user_id?: string | null;
   title: string;
   message: string;
   unlock_date: string;
@@ -16,6 +17,7 @@ type RawMemoryRecord = {
 
 export type SharedMemorySummary = {
   id: string;
+  userId: string | null;
   title: string;
   unlockDate: string;
   createdAt: string | null;
@@ -32,7 +34,7 @@ export async function getSharedMemorySummary(memoryId: string): Promise<SharedMe
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("memories")
-    .select("id, title, unlock_date, created_at, password_hash")
+    .select("id, user_id, title, unlock_date, created_at, password_hash")
     .eq("id", memoryId)
     .maybeSingle();
 
@@ -46,6 +48,7 @@ export async function getSharedMemorySummary(memoryId: string): Promise<SharedMe
 
   return {
     id: data.id,
+    userId: data.user_id ?? null,
     title: data.title,
     unlockDate: data.unlock_date,
     createdAt: data.created_at ?? null,
@@ -80,6 +83,7 @@ export async function getSharedMemoryContent(memoryId: string): Promise<SharedMe
 
   return {
     id: row.id,
+    userId: row.user_id ?? null,
     title: row.title,
     message: row.message,
     unlockDate: row.unlock_date,

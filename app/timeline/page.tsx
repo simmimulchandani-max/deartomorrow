@@ -69,8 +69,15 @@ export default function TimelinePage() {
   const [capsules, setCapsules] = useState<Capsule[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
+    const deleteToast = window.sessionStorage.getItem('memoryDeleteToast');
+    if (deleteToast) {
+      setSuccessMessage(deleteToast);
+      window.sessionStorage.removeItem('memoryDeleteToast');
+    }
+
     async function fetchMemories() {
       const supabase = getSupabaseClient();
       setErrorMessage('');
@@ -194,6 +201,12 @@ export default function TimelinePage() {
         {errorMessage ? (
           <div className="mb-8 rounded-2xl border border-[#eadfce] bg-[#fff4dc] px-4 py-3 text-sm text-[#6c5630]">
             {errorMessage}
+          </div>
+        ) : null}
+
+        {successMessage ? (
+          <div className="mb-8 rounded-2xl border border-[#cfe4cf] bg-[#f0fff0] px-4 py-3 text-sm text-[#315f38]">
+            {successMessage}
           </div>
         ) : null}
 
