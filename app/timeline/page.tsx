@@ -67,7 +67,7 @@ export default function TimelinePage() {
 
         const [memoryResult, capsuleResult] = await Promise.all([
           supabase
-            .from('capsule_memories')
+            .from('memories')
             .select('id, title, message, created_at, capsule_id, media_urls, user_id')
             .eq('user_id', session.user.id)
             .order('created_at', { ascending: false }),

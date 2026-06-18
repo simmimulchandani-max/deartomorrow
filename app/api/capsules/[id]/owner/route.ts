@@ -17,8 +17,10 @@ type RouteContext = {
   };
 };
 
-
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(
+  request: NextRequest,
+  { params }: RouteContext
+) {
   try {
     const user = await getUserFromRequest(request);
 
@@ -29,16 +31,22 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const { id } = context.params;
+    const { id } = params;
 
     if (!isSafeIdentifier(id)) {
-      return Response.json({ error: "Capsule not found." }, { status: 404 });
+      return Response.json(
+        { error: "Capsule not found." },
+        { status: 404 }
+      );
     }
 
     const capsule = await getCapsuleByShareSlug(id);
 
     if (!capsule) {
-      return Response.json({ error: "Capsule not found." }, { status: 404 });
+      return Response.json(
+        { error: "Capsule not found." },
+        { status: 404 }
+      );
     }
 
     if (capsule.ownerUserId !== user.id) {
@@ -50,7 +58,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const unlocked = hasDateArrived(capsule.unlockDate);
     const submissionCount = await countCapsuleMemories(capsule.id);
-    const memories = unlocked ? await listCapsuleMemories(capsule.id) : [];
+
+    const memories = unlocked
+      ? await listCapsuleMemories(capsule.id)
+      : [];
 
     return Response.json({
       capsule,
@@ -58,15 +69,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
       submissionCount,
       sharePath: buildCapsuleSharePath(capsule.shareSlug),
       unlockPath: buildCapsuleUnlockPath(capsule.shareSlug),
-
-      // IMPORTANT: normalize shape so frontend NEVER breaks again
       memories: memories.map((memory) => ({
         id: memory.id,
         capsuleId: memory.capsuleId,
         contributorName: memory.contributorName,
         title: memory.title,
         message: memory.message,
-        mediaUrls: memory.mediaUrls,
+        mediaUrls: memory.mediaUrls ?? [],
         createdAt: memory.createdAt,
         href: buildCapsuleMemoryPath(capsule.shareSlug, memory.id),
       })),

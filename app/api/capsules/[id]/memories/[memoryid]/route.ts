@@ -1,17 +1,14 @@
+import { NextRequest } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { getCapsuleByShareSlug } from "@/lib/capsules";
 import { isSafeIdentifier } from "@/lib/validation";
 
-type RouteContext = {
-  params: {
-    id: string;
-    memoryid: string;
-  };
-};
-
-export async function DELETE(request: Request, context: RouteContext) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string; memoryid: string } }
+) {
   try {
-    const { id, memoryid } = context.params;
+    const { id, memoryid } = params;
 
     if (!isSafeIdentifier(id) || !isSafeIdentifier(memoryid)) {
       return Response.json({ error: "Invalid request." }, { status: 400 });
@@ -32,7 +29,7 @@ export async function DELETE(request: Request, context: RouteContext) {
       .eq("capsule_id", capsule.id);
 
     if (error) {
-      throw new Error(error.message);
+      return Response.json({ error: error.message }, { status: 500 });
     }
 
     return Response.json({ success: true });
