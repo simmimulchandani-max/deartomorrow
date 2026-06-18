@@ -1,7 +1,7 @@
+import { NextRequest } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { getCapsuleByShareSlug } from "@/lib/capsules";
 import { isSafeIdentifier } from "@/lib/validation";
-import { NextRequest } from "next/server";
 
 type RouteContext = {
   params: {
