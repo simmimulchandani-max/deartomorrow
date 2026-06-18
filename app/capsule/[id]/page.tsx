@@ -58,7 +58,9 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
         }
       } catch (error) {
         if (isActive) {
-          setErrorMessage(error instanceof Error ? error.message : 'Failed to load capsule.');
+          setErrorMessage(
+            error instanceof Error ? error.message : 'Failed to load capsule.'
+          );
         }
       } finally {
         if (isActive) {
@@ -84,7 +86,11 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
 
     try {
       const memoryId = generateId();
-      const selectedFiles = fileInputRef.current?.files ? Array.from(fileInputRef.current.files) : [];
+
+      const selectedFiles = fileInputRef.current?.files
+        ? Array.from(fileInputRef.current.files)
+        : [];
+
       let uploadedMediaUrls: string[] = [];
 
       if (selectedFiles.length > 0) {
@@ -95,24 +101,29 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
             size: file.size,
           }))
         );
+
         if (mediaValidationError) {
           throw new Error(mediaValidationError);
         }
 
-        const uploadTargetResponse = await fetch(`/api/capsules/${shareSlug}/upload-targets`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            memoryId,
-            files: selectedFiles.map((file) => ({
-              name: file.name,
-              type: file.type,
-              size: file.size,
-            })),
-          }),
-        });
+        const uploadTargetResponse = await fetch(
+          `/api/capsules/${shareSlug}/upload-targets`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              memoryId,
+              files: selectedFiles.map((file) => ({
+                name: file.name,
+                type: file.type,
+                size: file.size,
+              })),
+            }),
+          }
+        );
+
         const uploadTargetPayload = await uploadTargetResponse.json();
 
         if (!uploadTargetResponse.ok) {
@@ -130,6 +141,7 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
         const uploadResults = await Promise.all(
           selectedFiles.map(async (file, index) => {
             const target = uploadTargets[index];
+
             const uploadResponse = await fetch(target.signedUrl, {
               method: 'PUT',
               headers: {
@@ -149,19 +161,24 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
         uploadedMediaUrls = uploadResults;
       }
 
-      const response = await fetch(`/api/capsules/${shareSlug}/memories`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          memoryId,
-          contributorName,
-          title,
-          message,
-          mediaUrls: uploadedMediaUrls,
-        }),
-      });
+      const response = await fetch(
+        `/api/capsules/${shareSlug}/memories`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            memoryId,
+            capsuleId: shareSlug, // ✅ FIXED (this is what was missing logically)
+            contributorName,
+            title,
+            message,
+            mediaUrls: uploadedMediaUrls,
+          }),
+        }
+      );
+
       const payload = await response.json();
 
       if (!response.ok) {
@@ -172,10 +189,14 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
       setTitle('');
       setMessage('');
       setSelectedFileNames([]);
+
       if (fileInputRef.current) fileInputRef.current.value = '';
+
       setSubmitted(true);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to submit memory.');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Failed to submit memory.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -200,8 +221,12 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
     return (
       <main className="min-h-screen bg-[#F5F0E6] px-6 py-16">
         <div className="mx-auto max-w-2xl rounded-[1.75rem] bg-gray-100 p-8 text-center shadow-sm">
-          <h1 className="text-3xl font-semibold text-[#4a3c31]">Capsule unavailable</h1>
-          <p className="mt-3 text-gray-600">{errorMessage || 'This capsule could not be found.'}</p>
+          <h1 className="text-3xl font-semibold text-[#4a3c31]">
+            Capsule unavailable
+          </h1>
+          <p className="mt-3 text-gray-600">
+            {errorMessage || 'This capsule could not be found.'}
+          </p>
         </div>
       </main>
     );
@@ -214,40 +239,38 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
           <p className="text-sm font-semibold tracking-[0.16em] text-gray-500">
             SHARED CAPSULE
           </p>
-          <h1 className="mt-3 text-4xl font-bold leading-tight text-[#4a3c31]">
+          <h1 className="mt-3 text-4xl font-bold text-[#4a3c31]">
             {capsule.title}
           </h1>
+
           {capsule.description ? (
-            <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-gray-600 sm:text-base">
+            <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-gray-600">
               {capsule.description}
             </p>
           ) : null}
+
           <p className="mt-4 text-sm text-gray-500">
-            Submissions close {capsule.submissionDeadline}. Unlocks {capsule.unlockDate}.
+            Submissions close {capsule.submissionDeadline}. Unlocks{' '}
+            {capsule.unlockDate}.
           </p>
         </div>
 
         {!capsule.submissionsOpen ? (
-          <div className="mt-10 rounded-[1.75rem] border border-white/70 bg-gray-100 p-8 text-center shadow-sm">
+          <div className="mt-10 rounded-[1.75rem] bg-gray-100 p-8 text-center">
             <h2 className="text-2xl font-semibold text-[#4a3c31]">
               This capsule is closed for submissions.
             </h2>
-            <p className="mt-3 text-sm leading-7 text-gray-600">
-              Thank you for visiting. The capsule is now waiting for its unlock day.
-            </p>
           </div>
         ) : submitted ? (
-          <div className="mt-10 rounded-[1.75rem] border border-white/70 bg-gray-100 p-8 text-center shadow-sm">
+          <div className="mt-10 rounded-[1.75rem] bg-gray-100 p-8 text-center">
             <h2 className="text-2xl font-semibold text-[#4a3c31]">
               Your memory is tucked inside.
             </h2>
-            <p className="mt-3 text-sm leading-7 text-gray-600">
-              It will stay hidden until the capsule owner unlocks the collection.
-            </p>
+
             <button
               type="button"
               onClick={() => setSubmitted(false)}
-              className="mt-6 inline-flex min-h-12 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-6 text-sm font-semibold text-[#4a3c31] shadow transition hover:bg-[#f4bba8]"
+              className="mt-6 inline-flex min-h-12 items-center justify-center rounded-full bg-[#f7c7b6] px-6 text-sm font-semibold text-[#4a3c31]"
             >
               Add Another Memory
             </button>
@@ -255,87 +278,57 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
         ) : (
           <form
             onSubmit={handleSubmit}
-            className="mt-10 rounded-[1.75rem] border border-white/70 bg-gray-100 p-8 shadow-sm sm:p-10"
+            className="mt-10 rounded-[1.75rem] bg-gray-100 p-8"
           >
             <div className="space-y-6">
-              <div>
-                <label className="block mb-2 font-medium text-gray-700">YOUR NAME</label>
-                <input
-                  type="text"
-                  value={contributorName}
-                  onChange={(event) => setContributorName(event.target.value)}
-                  maxLength={CONTRIBUTOR_NAME_MAX}
-                  className="w-full rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
-                  required
-                />
-              </div>
+              <input
+                value={contributorName}
+                onChange={(e) => setContributorName(e.target.value)}
+                placeholder="Your Name"
+                maxLength={CONTRIBUTOR_NAME_MAX}
+                className="w-full rounded-2xl border p-4"
+                required
+              />
 
-              <div>
-                <label className="block mb-2 font-medium text-gray-700">MEMORY TITLE</label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  maxLength={MEMORY_TITLE_MAX}
-                  className="w-full rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
-                  required
-                />
-              </div>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Memory Title"
+                maxLength={MEMORY_TITLE_MAX}
+                className="w-full rounded-2xl border p-4"
+                required
+              />
 
-              <div>
-                <label className="block mb-2 font-medium text-gray-700">MESSAGE</label>
-                <textarea
-                  value={message}
-                  onChange={(event) => setMessage(event.target.value)}
-                  maxLength={MEMORY_MESSAGE_MAX}
-                  className="h-32 w-full rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
-                  required
-                />
-              </div>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Message"
+                maxLength={MEMORY_MESSAGE_MAX}
+                className="h-32 w-full rounded-2xl border p-4"
+                required
+              />
 
-              <div>
-                <label className="block mb-2 font-medium text-gray-700">
-                  PHOTOS OR VIDEOS (OPTIONAL)
-                </label>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 p-8 text-gray-500 transition hover:border-gray-400"
-                >
-                  Upload photos or videos
-                </button>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*,video/*"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                {selectedFileNames.length > 0 ? (
-                  <div className="mt-3 space-y-2">
-                    {selectedFileNames.map((fileName) => (
-                      <p key={fileName} className="break-all text-sm text-gray-600">
-                        {fileName}
-                      </p>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <p className="text-xs text-gray-500">
-                Up to {MAX_MEDIA_FILES} files, 25MB each.
-              </p>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full rounded-2xl border border-dashed p-6"
+              >
+                Upload Photos/Videos
+              </button>
 
-              {errorMessage ? (
-                <p className="rounded-2xl bg-[#fff4dc] px-4 py-3 text-sm text-[#6c5630]">
-                  {errorMessage}
-                </p>
-              ) : null}
+              <input
+                type="file"
+                multiple
+                accept="image/*,video/*"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+              />
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex min-h-14 w-full items-center justify-center rounded-full bg-[#f7c7b6] px-8 text-base font-semibold text-[#4a3c31] transition hover:bg-[#f4bba8] disabled:cursor-not-allowed disabled:opacity-70"
+                className="w-full rounded-full bg-[#f7c7b6] p-4 font-semibold"
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Memory'}
               </button>

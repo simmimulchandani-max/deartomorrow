@@ -44,7 +44,7 @@ function ShareIconButton({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] text-[#4a3c31] shadow transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] text-[#4a3c31] shadow transition hover:bg-[#f4bba8]"
     >
       {children}
     </a>
@@ -97,9 +97,7 @@ export default function MemoryPolaroid({
       "(prefers-reduced-motion: reduce)"
     ).matches;
 
-    if (reducedMotion) {
-      return;
-    }
+    if (reducedMotion) return;
 
     void confetti({
       particleCount: 36,
@@ -132,9 +130,7 @@ export default function MemoryPolaroid({
           setCanDelete(session?.user.id === ownerUserId);
         }
       } catch {
-        if (active) {
-          setCanDelete(false);
-        }
+        if (active) setCanDelete(false);
       }
     }
 
@@ -154,7 +150,7 @@ export default function MemoryPolaroid({
   }
 
   async function handleNativeShare() {
-    if (typeof navigator !== "undefined" && navigator.share) {
+    if (navigator.share) {
       try {
         await navigator.share({
           title,
@@ -172,6 +168,7 @@ export default function MemoryPolaroid({
     try {
       setIsDeleting(true);
       setDeleteError("");
+
       const supabase = getSupabaseClient();
       const {
         data: { session },
@@ -184,7 +181,6 @@ export default function MemoryPolaroid({
       const res = await fetch(`/api/memories/${memoryId}`, {
         method: "DELETE",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
       });
@@ -196,7 +192,6 @@ export default function MemoryPolaroid({
       }
 
       setShowDeleteModal(false);
-      window.sessionStorage.setItem("memoryDeleteToast", "Memory deleted successfully.");
       window.location.href = "/timeline";
     } catch (err) {
       setDeleteError(
@@ -209,216 +204,103 @@ export default function MemoryPolaroid({
   }
 
   function goToPrevious() {
-    if (totalItems < 2) {
-      return;
-    }
-
-    setActiveIndex((current) => (current - 1 + totalItems) % totalItems);
+    if (totalItems < 2) return;
+    setActiveIndex((c) => (c - 1 + totalItems) % totalItems);
   }
 
   function goToNext() {
-    if (totalItems < 2) {
-      return;
-    }
-
-    setActiveIndex((current) => (current + 1) % totalItems);
+    if (totalItems < 2) return;
+    setActiveIndex((c) => (c + 1) % totalItems);
   }
 
   return (
     <section className="relative isolate min-h-screen overflow-x-hidden bg-[#4a3c31]">
       <UnlockWaveBackground />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col items-center justify-start px-4 pb-16 pt-16 text-center sm:px-6 sm:pb-20 sm:pt-20">
-        <div className="absolute left-1/2 top-[3%] h-[28rem] w-[30rem] -translate-x-1/2 rounded-full bg-[#F5F0E6]/76 blur-3xl" />
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col items-center justify-start px-4 pt-16 text-center">
 
-        <div className="relative z-10 flex w-full min-w-0 flex-col items-center">
-          <h1
-            className={`${handwritten.className} mt-3 max-w-full break-words text-[2.8rem] leading-none text-[#4a3c31] sm:text-[3.4rem]`}
-          >
-            {title}
-          </h1>
+        <h1 className={`${handwritten.className} mt-3 text-[2.8rem] text-[#4a3c31]`}>
+          {title}
+        </h1>
 
-          <p className="mt-2 text-sm font-medium text-white">{unlockDateLabel}</p>
+        <p className="mt-2 text-sm text-white">{unlockDateLabel}</p>
 
-          {!hasMedia ? (
-            <p className="mt-2 max-w-full break-words text-sm leading-7 text-[#4a3c31] sm:max-w-md sm:text-base">
-              A quiet piece of your story, saved here like something held
-              between pages.
-            </p>
-          ) : null}
-
-          <article className="mt-5 w-full max-w-[min(600px,88vw)] rotate-[-1.5deg] rounded-[2rem] bg-gray-100 p-4 pb-9 shadow-[0_28px_80px_rgba(74,60,49,0.32)] sm:mt-6 sm:p-5 sm:pb-11 lg:w-[600px] lg:max-w-[600px] lg:pb-12">
-            <div className="overflow-hidden rounded-[1.5rem] bg-[#f8f1e8] shadow-inner">
-              <div className="relative aspect-[4/5] max-h-[72vh] overflow-hidden lg:max-h-[70vh]">
-                {hasMedia ? (
-                  <div
-                    className="flex h-full w-full transition-transform duration-500 ease-out"
-                    style={{ transform: `translateX(-${activeIndex * 100}%)` }}
-                  >
-                    {mediaUrls.map((src, index) => (
-                      <div
-                        key={`${src}-${index}`}
-                        className="relative h-full w-full shrink-0 bg-[#f8f1e8]"
-                      >
-                        {isVideo(src) ? (
-                          <video
-                            src={src}
-                            controls
-                            className="h-full w-full object-contain"
-                          />
-                        ) : (
-                          <Image
-                            src={src}
-                            alt={`${title} media ${index + 1}`}
-                            fill
-                            unoptimized
-                            className="object-contain"
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="h-full bg-[#f8f1e8]" />
-                )}
-              </div>
-
-              {totalItems > 1 ? (
-                <div className="flex items-center justify-center gap-3 px-4 py-4">
-                  <button
-                    type="button"
-                    onClick={goToPrevious}
-                    aria-label="Previous media"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f7c7b6] text-[#4a3c31] transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
-                  >
-                    <span aria-hidden="true">&lt;</span>
-                  </button>
-
-                  <div className="flex items-center gap-2">
-                    {mediaUrls.map((_, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => setActiveIndex(index)}
-                        aria-label={`Go to media ${index + 1}`}
-                        className={`h-2.5 w-2.5 rounded-full transition ${
-                          index === activeIndex ? "bg-[#f7c7b6]" : "bg-gray-400"
-                        }`}
-                      />
-                    ))}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={goToNext}
-                    aria-label="Next media"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f7c7b6] text-[#4a3c31] transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
-                  >
-                    <span aria-hidden="true">&gt;</span>
-                  </button>
+        <article className="mt-6 w-full max-w-[600px] rounded-[2rem] bg-gray-100 p-5 shadow">
+          <div className="overflow-hidden rounded-[1.5rem] bg-[#f8f1e8]">
+            <div className="relative aspect-[4/5]">
+              {hasMedia ? (
+                <div
+                  className="flex h-full w-full transition-transform duration-500"
+                  style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+                >
+                  {mediaUrls.map((src, i) => (
+                    <div key={i} className="relative h-full w-full shrink-0">
+                      {isVideo(src) ? (
+                        <video src={src} controls className="h-full w-full object-contain" />
+                      ) : (
+                        <Image src={src} alt="" fill unoptimized className="object-contain" />
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ) : null}
+              ) : (
+                <div className="h-full" />
+              )}
             </div>
-
-            <div className="min-w-0 max-w-full px-3 pt-8 sm:px-4 sm:pt-9 lg:pt-10">
-              <p className="max-w-full whitespace-pre-wrap break-words text-center text-sm leading-7 text-[#4a3c31] sm:text-base sm:leading-8 lg:text-lg">
-                {message}
-              </p>
-              <p className="mt-6 max-w-full break-words text-center text-sm text-gray-500">
-                Saved {createdAtLabel}
-              </p>
-            </div>
-          </article>
-
-          <div className="mt-6 flex max-w-full flex-wrap items-center justify-center gap-3 sm:mt-8">
-            <ShareIconButton href={shareLinks.twitter} label="Share on X">
-              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-current">
-                <path d="M18.9 3H22l-6.8 7.8L23 21h-6.1l-4.8-6.3L6.6 21H3.5l7.3-8.3L3 3h6.2l4.3 5.8L18.9 3Zm-1.1 16h1.7L8.3 4.9H6.5L17.8 19Z" />
-              </svg>
-            </ShareIconButton>
-
-            <ShareIconButton href={shareLinks.facebook} label="Share on Facebook">
-              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-current">
-                <path d="M13.5 21v-7h2.3l.4-2.8h-2.7V9.4c0-.8.2-1.4 1.4-1.4H16V5.5c-.2 0-.9-.1-1.8-.1-1.8 0-3 1.1-3 3.2v2.6H9v2.8h2.4v7h2.1Z" />
-              </svg>
-            </ShareIconButton>
-
-            <ShareIconButton href={shareLinks.whatsapp} label="Share on WhatsApp">
-              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-current">
-                <path d="M12 2a9.8 9.8 0 0 0-8.4 14.8L2 22l5.3-1.5A9.9 9.9 0 1 0 12 2Zm0 17.9c-1.5 0-3-.4-4.2-1.2l-.3-.2-3.1.9.9-3-.2-.3a8 8 0 1 1 6.9 3.8Zm4.4-5.9c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.6.1l-.5.7c-.1.2-.3.2-.6.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.3 0-.5.1-.6l.4-.4.3-.5c.1-.1.1-.3 0-.5l-.7-1.7c-.2-.4-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3c-.2.2-.8.8-.8 1.9s.8 2.2.9 2.3c.1.2 1.6 2.5 4 3.4 1.5.6 2 .6 2.7.5.4-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1-.1 0-.3-.1-.5-.2Z" />
-              </svg>
-            </ShareIconButton>
-
-            <button
-              type="button"
-              onClick={handleNativeShare}
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-4 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] shadow transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
-            >
-              Share
-            </button>
-
-            <button
-              type="button"
-              onClick={handleCopyLink}
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-4 text-sm font-semibold tracking-[0.18em] text-[#4a3c31] shadow transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
-            >
-              {copied ? "Link Copied" : "Copy Link"}
-            </button>
-
-            {showDeleteButton && canDelete ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setDeleteError("");
-                  setShowDeleteModal(true);
-                }}
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-red-300 bg-red-400 px-4 text-sm font-semibold tracking-[0.18em] text-white shadow transition hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
-              >
-                Delete
-              </button>
-            ) : null}
           </div>
 
-          {deleteError ? (
-            <p className="mt-4 max-w-full break-words rounded-2xl bg-[#F5F0E6]/90 px-4 py-3 text-sm text-[#8a3d2f] shadow sm:max-w-md">
-              {deleteError}
-            </p>
-          ) : null}
+          <p className="mt-6 whitespace-pre-wrap text-center text-[#4a3c31]">
+            {message}
+          </p>
+
+          <p className="mt-4 text-sm text-gray-500">Saved {createdAtLabel}</p>
+        </article>
+
+        <div className="mt-6 flex gap-3">
+          <button onClick={handleCopyLink}>Copy Link</button>
+          <button onClick={handleNativeShare}>Share</button>
+
+          {showDeleteButton && canDelete && (
+            <button
+              onClick={() => {
+                setDeleteError("");
+                setShowDeleteModal(true);
+              }}
+              className="rounded-full bg-red-500 px-4 py-2 text-white"
+            >
+              Delete
+            </button>
+          )}
         </div>
+
+        {deleteError ? (
+          <p className="mt-4 text-red-300">{deleteError}</p>
+        ) : null}
       </div>
 
       {showDeleteModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#4a3c31]/45 px-4 backdrop-blur-sm">
-          <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-[2rem] bg-[#F5F0E6] p-6 text-center shadow-[0_24px_80px_rgba(74,60,49,0.28)] sm:p-7">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#f7c7b6] text-3xl shadow-sm">
-              🗑️
-            </div>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40">
+          <div className="rounded-2xl bg-white p-6 text-center">
+            <h2 className="text-xl font-semibold">Delete Memory?</h2>
 
-            <h2 className="text-2xl font-semibold text-[#4a3c31]">
-              Delete Memory?
-            </h2>
-
-            <p className="mt-3 max-w-full break-words text-sm leading-7 text-[#6b5a4f] sm:text-base">
-              This action cannot be undone. Your memory and all associated photos/videos will be permanently deleted.
+            <p className="mt-2 text-sm text-gray-600">
+              This cannot be undone.
             </p>
 
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <div className="mt-4 flex justify-center gap-3">
               <button
-                type="button"
                 onClick={() => setShowDeleteModal(false)}
                 disabled={isDeleting}
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#d8cfc4] bg-white px-5 text-sm font-semibold tracking-[0.08em] text-[#4a3c31] shadow-sm transition hover:bg-[#f8f1e8] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
 
               <button
-                type="button"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-red-300 bg-red-400 px-5 text-sm font-semibold tracking-[0.08em] text-white shadow transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                className="text-red-500"
               >
-                {isDeleting ? "Deleting..." : "Delete Memory"}
+                {isDeleting ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>

@@ -106,12 +106,14 @@ export async function POST(request: Request, context: RouteContext) {
 
     const memory = await createCapsuleMemory({
       id: memoryId,
-      capsuleId: capsule.id,
+      capsuleId: capsule.id, // keep this as the SOURCE OF TRUTH
       contributorName,
       title,
       message,
       mediaUrls: trustedMediaUrls,
     });
+
+return Response.json({ memory: { id: memory.id } }, { status: 201 });
 
     return Response.json({ memory: { id: memory.id } }, { status: 201 });
   } catch (error) {

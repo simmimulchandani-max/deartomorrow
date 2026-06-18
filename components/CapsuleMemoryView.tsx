@@ -39,10 +39,12 @@ export default function CapsuleMemoryView({
   memoryId: string;
 }) {
   const supabase = useMemo(() => getSupabaseClient(), []);
+
   const [memory, setMemory] = useState<CapsuleMemory | null>(null);
   const [unlockDate, setUnlockDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -62,6 +64,7 @@ export default function CapsuleMemoryView({
             Authorization: `Bearer ${session.access_token}`,
           },
         });
+
         const payload = await response.json();
 
         if (!response.ok) {
@@ -91,9 +94,7 @@ export default function CapsuleMemoryView({
           );
         }
       } finally {
-        if (isActive) {
-          setIsLoading(false);
-        }
+        if (isActive) setIsLoading(false);
       }
     }
 
@@ -103,6 +104,37 @@ export default function CapsuleMemoryView({
       isActive = false;
     };
   }, [memoryId, shareSlug, supabase]);
+
+  async function handleDelete() {
+    if (!memory) return;
+
+    try {
+      setDeletingId(memory.id);
+
+      const res = await fetch(
+        `/api/capsules/${shareSlug}/memories/${memory.id}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to delete memory');
+      }
+
+      // ✅ instant UI update (no reload)
+      setMemory(null);
+    } catch (err) {
+      console.error(err);
+      setErrorMessage(
+        err instanceof Error ? err.message : 'Failed to delete memory'
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -118,7 +150,9 @@ export default function CapsuleMemoryView({
     return (
       <main className="min-h-screen bg-[#F5F0E6] px-6 py-16">
         <div className="mx-auto max-w-3xl rounded-[1.75rem] bg-gray-100 p-8 text-center shadow-sm">
-          <h1 className="text-3xl font-semibold text-[#4a3c31]">Memory unavailable</h1>
+          <h1 className="text-3xl font-semibold text-[#4a3c31]">
+            Memory unavailable
+          </h1>
           <p className="mt-3 text-gray-600">{errorMessage}</p>
         </div>
       </main>
@@ -134,7 +168,9 @@ export default function CapsuleMemoryView({
       createdAtLabel={formatDate(memory.createdAt)}
       mediaUrls={memory.mediaUrls}
       sharePath={`/capsule/${shareSlug}/memory/${memory.id}`}
-      showDeleteButton={false}
+      showDeleteButton={true}
+      onDelete={handleDelete}
+      deleting={deletingId === memory.id}
     />
   );
 }
