@@ -10,6 +10,7 @@ type Memory = {
   message: string;
   unlock_date: string;
   created_at: string | null;
+  media_url?: string | null;
   media_urls?: string[] | null;
   user_id?: string;
 };
@@ -57,7 +58,61 @@ function statusLabel(unlockDate: string) {
 }
 
 function firstMediaUrl(memory: Memory) {
-  return Array.isArray(memory.media_urls) ? memory.media_urls[0] : null;
+  const mediaUrls = Array.isArray(memory.media_urls)
+    ? memory.media_urls.filter((url): url is string => typeof url === 'string' && url.length > 0)
+    : [];
+
+  return mediaUrls[0] ?? memory.media_url ?? null;
+}
+
+function isVideoUrl(url: string) {
+  return /\.(mp4|webm|ogg|mov)$/i.test(url) || url.includes('video');
+}
+
+function WaitingWaveCard({ label = 'Waiting to bloom' }: { label?: string }) {
+  return (
+    <div className="h-36 w-full overflow-hidden rounded-[1rem] border border-white/70 bg-[linear-gradient(180deg,_#f7efe4_0%,_#efe6d8_34%,_#dcecf3_70%,_#cfe3ec_100%)] shadow-sm">
+      <div className="relative h-full w-full">
+        <div className="absolute inset-x-0 bottom-0 h-[58%] bg-[linear-gradient(180deg,_rgba(196,223,235,0.92)_0%,_rgba(176,210,226,0.98)_100%)]" />
+        <div className="absolute inset-x-[-6%] bottom-[34%] h-7 rounded-[100%] bg-white/80 blur-[0.5px]" />
+        <div className="absolute inset-x-[-12%] bottom-[24%] h-11 rounded-[100%] bg-[#dceef5]/95" />
+        <div className="absolute inset-x-[-10%] bottom-[15%] h-8 rounded-[100%] bg-white/88" />
+        <div className="absolute inset-x-[-14%] bottom-[7%] h-10 rounded-[100%] bg-[#c8e0ea]" />
+        <div className="absolute inset-x-[-8%] bottom-[1%] h-7 rounded-[100%] bg-white/72" />
+
+        <div className="absolute inset-x-0 bottom-3 px-3 text-center">
+          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[#6f7f87]">
+            {label}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimelinePreview({
+  mediaUrl,
+  label,
+}: {
+  mediaUrl?: string | null;
+  label: string;
+}) {
+  return (
+    <div className="rounded-[1.5rem] bg-white/70 p-4">
+      {mediaUrl ? (
+        <div className="h-36 w-full overflow-hidden rounded-[1rem] border border-white/70 bg-white shadow-sm">
+          {isVideoUrl(mediaUrl) ? (
+            <video src={mediaUrl} muted playsInline className="h-full w-full object-cover" />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={mediaUrl} alt="" className="h-full w-full object-cover" />
+          )}
+        </div>
+      ) : (
+        <WaitingWaveCard label={label} />
+      )}
+    </div>
+  );
 }
 
 export default function TimelinePage() {
@@ -100,7 +155,7 @@ export default function TimelinePage() {
         const [memoryResult, capsuleResult] = await Promise.all([
           supabase
             .from('memories')
-            .select('id, title, message, unlock_date, created_at, media_urls, user_id')
+            .select('id, title, message, unlock_date, created_at, media_url, media_urls, user_id')
             .eq('user_id', session.user.id)
             .order('created_at', { ascending: false }),
           fetch('/api/capsules', {
@@ -244,15 +299,11 @@ export default function TimelinePage() {
 
                     return (
                       <article key={memory.id} className="overflow-hidden rounded-2xl bg-gray-100 shadow-sm">
-                        <div className="relative h-32 bg-[#4a3c31]">
-                          <div className="absolute inset-x-0 bottom-0 h-16 rounded-t-[50%] bg-[#f7c7b6]" />
-                          <div className="absolute inset-x-8 bottom-5 h-10 rounded-t-[50%] bg-[#F5F0E6]" />
-                          {preview ? (
-                            <div className="absolute right-5 top-5 h-20 w-20 overflow-hidden rounded-xl bg-white shadow">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={preview} alt="" className="h-full w-full object-cover" />
-                            </div>
-                          ) : null}
+                        <div className="px-6 pt-6">
+                          <TimelinePreview
+                            mediaUrl={preview}
+                            label={ready ? 'Ready to bloom' : 'Waiting to bloom'}
+                          />
                         </div>
 
                         <div className="p-6">
@@ -304,9 +355,10 @@ export default function TimelinePage() {
 
                     return (
                       <article key={capsule.id} className="overflow-hidden rounded-2xl bg-gray-100 shadow-sm">
-                        <div className="relative h-32 bg-[#4a3c31]">
-                          <div className="absolute inset-x-0 bottom-0 h-16 rounded-t-[50%] bg-[#f7c7b6]" />
-                          <div className="absolute inset-x-8 bottom-5 h-10 rounded-t-[50%] bg-[#F5F0E6]" />
+                        <div className="px-6 pt-6">
+                          <TimelinePreview
+                            label={ready ? 'Ready to bloom' : 'Waiting to bloom'}
+                          />
                         </div>
 
                         <div className="p-6">
