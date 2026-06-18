@@ -23,9 +23,7 @@ type MemoryPolaroidProps = {
   mediaUrls: string[];
   sharePath?: string;
   showDeleteButton?: boolean;
-
   onDelete?: () => void | Promise<void>;
-  deleting?: boolean;
 };
 
 function isVideo(src: string) {
@@ -65,7 +63,6 @@ export default function MemoryPolaroid({
   sharePath,
   showDeleteButton = true,
   onDelete,
-  deleting = false,
 }: MemoryPolaroidProps){
   const [activeIndex, setActiveIndex] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -120,6 +117,11 @@ export default function MemoryPolaroid({
     let active = true;
 
     async function checkDeletePermission() {
+      if (onDelete && showDeleteButton) {
+        setCanDelete(true);
+        return;
+      }
+
       if (!ownerUserId) {
         setCanDelete(false);
         return;
@@ -144,7 +146,7 @@ export default function MemoryPolaroid({
     return () => {
       active = false;
     };
-  }, [ownerUserId]);
+  }, [onDelete, ownerUserId, showDeleteButton]);
 
   async function handleCopyLink() {
     try {
@@ -173,6 +175,12 @@ export default function MemoryPolaroid({
     try {
       setIsDeleting(true);
       setDeleteError("");
+
+      if (onDelete) {
+        await onDelete();
+        setShowDeleteModal(false);
+        return;
+      }
 
       const supabase = getSupabaseClient();
       const {
@@ -254,19 +262,32 @@ export default function MemoryPolaroid({
             </div>
           </div>
 
-          <p className="mt-6 whitespace-pre-wrap text-center text-[#4a3c31]">
+          <p className="mt-6 whitespace-pre-wrap break-words text-center leading-8 text-[#4a3c31]">
             {message}
           </p>
 
           <p className="mt-4 text-sm text-gray-500">Saved {createdAtLabel}</p>
         </article>
 
-        <div className="mt-6 flex gap-3">
-          <button onClick={handleCopyLink}>Copy Link</button>
-          <button onClick={handleNativeShare}>Share</button>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3 pb-10">
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#f7c7b6] px-5 text-sm font-semibold text-[#4a3c31] shadow transition hover:bg-[#f4bba8]"
+          >
+            {copied ? "Copied" : "Copy Link"}
+          </button>
+          <button
+            type="button"
+            onClick={handleNativeShare}
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#f7c7b6] px-5 text-sm font-semibold text-[#4a3c31] shadow transition hover:bg-[#f4bba8]"
+          >
+            Share
+          </button>
 
           {showDeleteButton && canDelete && (
             <button
+              type="button"
               onClick={() => {
                 setDeleteError("");
                 setShowDeleteModal(true);
@@ -292,18 +313,21 @@ export default function MemoryPolaroid({
               This cannot be undone.
             </p>
 
-            <div className="mt-4 flex justify-center gap-3">
+            <div className="mt-4 flex flex-wrap justify-center gap-3">
               <button
+                type="button"
                 onClick={() => setShowDeleteModal(false)}
                 disabled={isDeleting}
+                className="rounded-full bg-gray-200 px-4 py-2 text-[#4a3c31]"
               >
                 Cancel
               </button>
 
               <button
+                type="button"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="text-red-500"
+                className="rounded-full bg-red-500 px-4 py-2 text-white disabled:opacity-60"
               >
                 {isDeleting ? "Deleting..." : "Delete"}
               </button>

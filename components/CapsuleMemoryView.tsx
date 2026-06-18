@@ -44,7 +44,6 @@ export default function CapsuleMemoryView({
   const [unlockDate, setUnlockDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -109,8 +108,6 @@ export default function CapsuleMemoryView({
     if (!memory) return;
 
     try {
-      setDeletingId(memory.id);
-
       const res = await fetch(
         `/api/capsules/${shareSlug}/memories/${memory.id}`,
         {
@@ -124,15 +121,12 @@ export default function CapsuleMemoryView({
         throw new Error(data?.error || 'Failed to delete memory');
       }
 
-      // ✅ instant UI update (no reload)
       setMemory(null);
     } catch (err) {
       console.error(err);
       setErrorMessage(
         err instanceof Error ? err.message : 'Failed to delete memory'
       );
-    } finally {
-      setDeletingId(null);
     }
   }
 
@@ -160,16 +154,16 @@ export default function CapsuleMemoryView({
   }
 
   return (
-  <MemoryPolaroid
-    memoryId={memory.id}
-    title={memory.title}
-    message={`${memory.message}\n\n- ${memory.contributorName}`}
-    unlockDateLabel={formatUnlockDate(unlockDate)}
-    createdAtLabel={formatDate(memory.createdAt)}
-    mediaUrls={memory.mediaUrls}
-    sharePath={`/capsule/${shareSlug}/memory/${memory.id}`}
-    showDeleteButton={true}
-    ownerUserId={undefined}
-  />
+    <MemoryPolaroid
+      memoryId={memory.id}
+      title={memory.title}
+      message={`${memory.message}\n\n- ${memory.contributorName}`}
+      unlockDateLabel={formatUnlockDate(unlockDate)}
+      createdAtLabel={formatDate(memory.createdAt)}
+      mediaUrls={memory.mediaUrls}
+      sharePath={`/capsule/${shareSlug}/memory/${memory.id}`}
+      showDeleteButton
+      onDelete={handleDelete}
+    />
   );
 }

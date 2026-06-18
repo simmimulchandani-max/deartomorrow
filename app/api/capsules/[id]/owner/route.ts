@@ -9,17 +9,10 @@ import {
 } from "@/lib/capsules";
 import { getUserFromRequest } from "@/lib/serverAuth";
 import { isSafeIdentifier } from "@/lib/validation";
-import { NextRequest } from "next/server";
-
-type RouteContext = {
-  params: {
-    id: string;
-  };
-};
 
 export async function GET(
-  request: NextRequest,
-  { params }: RouteContext
+  request: Request,
+  context: RouteContext<"/api/capsules/[id]/owner">
 ) {
   try {
     const user = await getUserFromRequest(request);
@@ -31,7 +24,7 @@ export async function GET(
       );
     }
 
-    const { id } = params;
+    const { id } = await context.params;
 
     if (!isSafeIdentifier(id)) {
       return Response.json(
