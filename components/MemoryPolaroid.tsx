@@ -23,6 +23,9 @@ type MemoryPolaroidProps = {
   mediaUrls: string[];
   sharePath?: string;
   showDeleteButton?: boolean;
+
+  onDelete?: () => void | Promise<void>;
+  deleting?: boolean;
 };
 
 function isVideo(src: string) {
@@ -61,7 +64,9 @@ export default function MemoryPolaroid({
   mediaUrls,
   sharePath,
   showDeleteButton = true,
-}: MemoryPolaroidProps) {
+  onDelete,
+  deleting = false,
+}: MemoryPolaroidProps){
   const [activeIndex, setActiveIndex] = useState(0);
   const [copied, setCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);

@@ -169,8 +169,6 @@ export default function CapsuleMemoryView({
       mediaUrls={memory.mediaUrls}
       sharePath={`/capsule/${shareSlug}/memory/${memory.id}`}
       showDeleteButton={true}
-      onDelete={handleDelete}
-      deleting={deletingId === memory.id}
     />
   );
 }

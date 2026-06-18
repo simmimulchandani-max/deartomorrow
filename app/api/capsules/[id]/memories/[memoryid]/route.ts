@@ -5,15 +5,15 @@ import { isSafeIdentifier } from "@/lib/validation";
 type RouteContext = {
   params: Promise<{
     id: string;
-    memoryId: string;
+    memoryid: string;
   }>;
 };
 
-export async function DELETE(_: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
   try {
-    const { id, memoryId } = await context.params;
+    const { id, memoryid } = await context.params;
 
-    if (!isSafeIdentifier(id) || !isSafeIdentifier(memoryId)) {
+    if (!isSafeIdentifier(id) || !isSafeIdentifier(memoryid)) {
       return Response.json({ error: "Invalid request." }, { status: 400 });
     }
 
@@ -28,7 +28,7 @@ export async function DELETE(_: Request, context: RouteContext) {
     const { error } = await supabase
       .from("capsule_memories")
       .delete()
-      .eq("id", memoryId)
+      .eq("id", memoryid)
       .eq("capsule_id", capsule.id);
 
     if (error) {

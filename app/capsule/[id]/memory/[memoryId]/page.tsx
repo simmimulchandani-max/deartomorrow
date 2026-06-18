@@ -9,5 +9,11 @@ type CapsuleMemoryPageProps = {
 
 export default async function CapsuleMemoryPage({ params }: CapsuleMemoryPageProps) {
   const { id, memoryId } = await params;
-  return <CapsuleMemoryView shareSlug={id} memoryId={memoryId} />;
+
+  return (
+    <CapsuleMemoryView
+      shareSlug={id}
+      memoryId={memoryId}
+    />
+  );
 }
