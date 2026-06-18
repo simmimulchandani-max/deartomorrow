@@ -160,15 +160,16 @@ export default function CapsuleMemoryView({
   }
 
   return (
-    <MemoryPolaroid
-      memoryId={memory.id}
-      title={memory.title}
-      message={`${memory.message}\n\n- ${memory.contributorName}`}
-      unlockDateLabel={formatUnlockDate(unlockDate)}
-      createdAtLabel={formatDate(memory.createdAt)}
-      mediaUrls={memory.mediaUrls}
-      sharePath={`/capsule/${shareSlug}/memory/${memory.id}`}
-      showDeleteButton={true}
-    />
+  <MemoryPolaroid
+    memoryId={memory.id}
+    title={memory.title}
+    message={`${memory.message}\n\n- ${memory.contributorName}`}
+    unlockDateLabel={formatUnlockDate(unlockDate)}
+    createdAtLabel={formatDate(memory.createdAt)}
+    mediaUrls={memory.mediaUrls}
+    sharePath={`/capsule/${shareSlug}/memory/${memory.id}`}
+    showDeleteButton={true}
+    ownerUserId={undefined}
+  />
   );
 }

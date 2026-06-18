@@ -1,17 +1,21 @@
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { getCapsuleByShareSlug } from "@/lib/capsules";
 import { isSafeIdentifier } from "@/lib/validation";
+import { NextRequest } from "next/server";
 
 type RouteContext = {
-  params: Promise<{
+  params: {
     id: string;
     memoryid: string;
-  }>;
+  };
 };
 
-export async function DELETE(request: Request, context: RouteContext) {
+export async function DELETE(
+  request: NextRequest,
+  context: RouteContext
+) {
   try {
-    const { id, memoryid } = await context.params;
+    const { id, memoryid } = context.params;
 
     if (!isSafeIdentifier(id) || !isSafeIdentifier(memoryid)) {
       return Response.json({ error: "Invalid request." }, { status: 400 });
