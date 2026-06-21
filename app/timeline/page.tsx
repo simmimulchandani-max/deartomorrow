@@ -131,9 +131,12 @@ export default function TimelinePage() {
   );
 
   useEffect(() => {
-    const toast = window.sessionStorage.getItem('memoryDeleteToast');
+    const toast =
+      window.sessionStorage.getItem('capsuleDeleteToast') ??
+      window.sessionStorage.getItem('memoryDeleteToast');
     if (toast) {
       setSuccessMessage(toast);
+      window.sessionStorage.removeItem('capsuleDeleteToast');
       window.sessionStorage.removeItem('memoryDeleteToast');
     }
 

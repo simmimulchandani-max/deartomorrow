@@ -54,6 +54,8 @@ export default function CapsuleOwnerView({
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [payload, setPayload] = useState<OwnerPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [copied, setCopied] = useState(false);
 
@@ -109,6 +111,47 @@ export default function CapsuleOwnerView({
     window.setTimeout(() => setCopied(false), 1800);
   }
 
+  async function handleDeleteCapsule() {
+    try {
+      setIsDeleting(true);
+      setErrorMessage('');
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error('Please log in as the capsule owner.');
+      }
+
+      const response = await fetch(`/api/capsules/${shareSlug}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to delete capsule.');
+      }
+
+      window.sessionStorage.setItem(
+        'capsuleDeleteToast',
+        'Capsule deleted successfully'
+      );
+      window.location.href = '/timeline';
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Failed to delete capsule.'
+      );
+      setShowDeleteModal(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   if (isLoading) {
     return (
       <main className="min-h-screen bg-[#F5F0E6] px-6 py-16">
@@ -158,6 +201,12 @@ export default function CapsuleOwnerView({
             {copied ? 'Link Copied' : 'Copy Share Link'}
           </button>
         </div>
+
+        {errorMessage ? (
+          <p className="mb-6 rounded-2xl bg-white px-5 py-3 text-sm font-medium text-red-600 shadow-sm">
+            {errorMessage}
+          </p>
+        ) : null}
 
         <div className="mb-8 grid gap-4 sm:grid-cols-3">
           <div className="rounded-[1.75rem] border border-white/70 bg-gray-100 p-6 shadow-sm">
@@ -263,7 +312,59 @@ export default function CapsuleOwnerView({
             ))}
           </div>
         )}
+
+        <div className="mt-12 border-t border-[#d8cfc2] pt-6">
+          <button
+            type="button"
+            onClick={() => setShowDeleteModal(true)}
+            className="inline-flex min-h-10 items-center justify-center rounded-full bg-white px-4 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+          >
+            Delete Capsule
+          </button>
+        </div>
       </section>
+
+      {showDeleteModal ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-capsule-title"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl">
+            <h2
+              id="delete-capsule-title"
+              className="text-xl font-semibold text-[#4a3c31]"
+            >
+              Delete Capsule?
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-gray-600">
+              This will permanently delete the capsule and all memories submitted
+              to it. This action cannot be undone.
+            </p>
+
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+                className="rounded-full bg-gray-200 px-4 py-2 text-[#4a3c31]"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeleteCapsule}
+                disabled={isDeleting}
+                className="rounded-full bg-red-500 px-4 py-2 text-white disabled:opacity-60"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Capsule'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
