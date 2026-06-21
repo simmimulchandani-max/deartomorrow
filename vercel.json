@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/send-unlock-emails",
-      "schedule": "0 13 * * *"
+      "schedule": "0 14 * * *"
     }
   ]
 }

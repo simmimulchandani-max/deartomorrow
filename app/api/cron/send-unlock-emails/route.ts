@@ -10,13 +10,17 @@ import type React from "react";
 type MemoryUnlockRow = {
   id: string;
   user_id: string | null;
+  title: string;
   unlock_date: string;
+  media_url?: string | null;
+  media_urls?: unknown;
 };
 
 type CapsuleUnlockRow = {
   id: string;
   share_slug: string;
   owner_user_id: string;
+  title: string;
   unlock_date: string;
 };
 
@@ -31,6 +35,9 @@ type SendResult = {
 
 const MAX_RECORDS_PER_TYPE = 200;
 const DEFAULT_FROM_EMAIL = "Until Tomorrow <onboarding@resend.dev>";
+const CAPSULE_SENT_COLUMN = "capsule_unlock_email_sent_at";
+const APP_TIME_ZONE = "America/New_York";
+const LOGO_PATH = "/logo.png";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,7 +69,9 @@ async function handleUnlockEmailRequest(request: Request) {
   }
 
   const resendApiKey = process.env.RESEND_API_KEY;
-  const siteUrl = normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
+  const siteUrl =
+    normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL) ??
+    normalizeSiteUrl(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
   const fromEmail = process.env.RESEND_FROM_EMAIL?.trim() || DEFAULT_FROM_EMAIL;
 
   console.log("[unlock-email-cron] Starting run", {
@@ -73,11 +82,14 @@ async function handleUnlockEmailRequest(request: Request) {
     utcNow: new Date().toISOString(),
     fromEmail,
     hasResendApiKey: Boolean(resendApiKey),
-    hasSiteUrl: Boolean(siteUrl),
+    hasNextPublicSiteUrl: Boolean(process.env.NEXT_PUBLIC_SITE_URL),
+    hasVercelUrl: Boolean(process.env.VERCEL_URL),
+    hasResolvedSiteUrl: Boolean(siteUrl),
     hasSupabaseUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
     hasSupabaseServiceRole: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-    vercelCronSchedule: "0 13 * * *",
+    vercelCronSchedule: "0 14 * * *",
     cronTimezone: "UTC",
+    appTimeZone: APP_TIME_ZONE,
   });
 
   if (!resendApiKey) {
@@ -86,23 +98,34 @@ async function handleUnlockEmailRequest(request: Request) {
   }
 
   if (!siteUrl) {
-    console.error("[unlock-email-cron] Missing NEXT_PUBLIC_SITE_URL", { runId });
-    return Response.json({ error: "Missing NEXT_PUBLIC_SITE_URL." }, { status: 500 });
+    console.error("[unlock-email-cron] Missing app URL", { runId });
+    return Response.json(
+      { error: "Missing NEXT_PUBLIC_SITE_URL or VERCEL_URL." },
+      { status: 500 }
+    );
   }
 
   try {
     const resend = new Resend(resendApiKey);
-    const today = dateOnly(new Date());
+    const now = new Date();
+    const today = dateInTimeZone(now, APP_TIME_ZONE);
+    const logoUrl = new URL(LOGO_PATH, siteUrl).toString();
 
     if (testEmail) {
-      const template = buildMemoryUnlockEmailTemplate(new URL("/timeline", siteUrl).toString());
+      const template = buildCapsuleUnlockEmailTemplate({
+        logoUrl,
+        capsuleTitle: url.searchParams.get("title")?.trim() || "Test Capsule",
+        unlockDate: formatEmailDate(today),
+        unlockUrl: new URL("/capsule/test/unlock", siteUrl).toString(),
+        memoryCount: 3,
+      });
       const emailResponse = dryRun
         ? null
         : await sendEmailViaResend({
             resend,
             from: fromEmail,
             to: testEmail,
-            subject: "Test: your memory is ready to open",
+            subject: "Your capsule is ready to open \uD83D\uDC8C",
             text: template.text,
             react: template.react,
             runId,
@@ -122,6 +145,7 @@ async function handleUnlockEmailRequest(request: Request) {
         mode: "test",
         dryRun,
         date: today,
+        appTimeZone: APP_TIME_ZONE,
         sentTo: dryRun ? null : testEmail,
         resendId: emailResponse?.data?.id ?? null,
       });
@@ -135,6 +159,7 @@ async function handleUnlockEmailRequest(request: Request) {
       resend,
       today,
       siteUrl,
+      logoUrl,
       from: fromEmail,
       emailCache,
       dryRun,
@@ -145,6 +170,7 @@ async function handleUnlockEmailRequest(request: Request) {
       resend,
       today,
       siteUrl,
+      logoUrl,
       from: fromEmail,
       emailCache,
       dryRun,
@@ -163,6 +189,7 @@ async function handleUnlockEmailRequest(request: Request) {
     return Response.json({
       ok: failed === 0,
       date: today,
+      appTimeZone: APP_TIME_ZONE,
       dryRun,
       runId,
       memories: memoryResult,
@@ -186,6 +213,7 @@ async function sendMemoryUnlockEmails(input: {
   resend: Resend;
   today: string;
   siteUrl: string;
+  logoUrl: string;
   from: string;
   emailCache: Map<string, string | null>;
   dryRun: boolean;
@@ -230,11 +258,18 @@ async function sendMemoryUnlockEmails(input: {
       }
 
       const memoryLink = new URL(`/memory/${memory.id}`, input.siteUrl).toString();
-      const template = buildMemoryUnlockEmailTemplate(memoryLink);
+      const template = buildMemoryUnlockEmailTemplate({
+        logoUrl: input.logoUrl,
+        memoryTitle: memory.title,
+        unlockDate: formatEmailDate(memory.unlock_date),
+        unlockUrl: memoryLink,
+        previewImageUrl: firstImageUrl(memory),
+      });
 
       console.log("[unlock-email-cron] Attempting memory email", {
         runId: input.runId,
         memoryId: memory.id,
+        title: memory.title,
         unlockDate: memory.unlock_date,
         recipient,
       });
@@ -259,7 +294,7 @@ async function sendMemoryUnlockEmails(input: {
         resend: input.resend,
         from: input.from,
         to: recipient,
-        subject: "Your memory is ready \uD83D\uDC8C",
+        subject: "Your memory is ready to unlock \uD83D\uDC8C",
         text: template.text,
         react: template.react,
         runId: input.runId,
@@ -300,6 +335,7 @@ async function sendCapsuleUnlockEmails(input: {
   resend: Resend;
   today: string;
   siteUrl: string;
+  logoUrl: string;
   from: string;
   emailCache: Map<string, string | null>;
   dryRun: boolean;
@@ -323,6 +359,14 @@ async function sendCapsuleUnlockEmails(input: {
 
   for (const capsule of rows) {
     try {
+      console.log("[unlock-email-cron] Processing capsule", {
+        runId: input.runId,
+        capsuleId: capsule.id,
+        title: capsule.title,
+        ownerUserId: capsule.owner_user_id,
+        unlockDate: capsule.unlock_date,
+      });
+
       const recipient = await getUserEmail(input.supabase, capsule.owner_user_id, input.emailCache);
       if (!recipient) {
         result.skippedNoUser += 1;
@@ -335,12 +379,21 @@ async function sendCapsuleUnlockEmails(input: {
       }
 
       const unlockLink = new URL(`/capsule/${capsule.share_slug}/unlock`, input.siteUrl).toString();
-      const template = buildCapsuleUnlockEmailTemplate(unlockLink);
+      const memoryCount = await countCapsuleMemories(input.supabase, capsule.id);
+      const template = buildCapsuleUnlockEmailTemplate({
+        logoUrl: input.logoUrl,
+        capsuleTitle: capsule.title,
+        unlockDate: formatEmailDate(capsule.unlock_date),
+        unlockUrl: unlockLink,
+        memoryCount,
+      });
 
-      console.log("[unlock-email-cron] Attempting capsule email", {
+      console.log("[unlock-email-cron] Owner email found; attempting capsule email", {
         runId: input.runId,
         capsuleId: capsule.id,
+        title: capsule.title,
         unlockDate: capsule.unlock_date,
+        memoryCount,
         recipient,
       });
 
@@ -364,7 +417,7 @@ async function sendCapsuleUnlockEmails(input: {
         resend: input.resend,
         from: input.from,
         to: recipient,
-        subject: "Your capsule is ready to unlock",
+        subject: "Your capsule is ready to open \uD83D\uDC8C",
         text: template.text,
         react: template.react,
         runId: input.runId,
@@ -406,7 +459,7 @@ async function fetchUnsentMemories(
 ) {
   const { data, error } = await supabase
     .from("memories")
-    .select("id, user_id, unlock_date")
+    .select("id, user_id, title, unlock_date, media_url, media_urls")
     .lte("unlock_date", today)
     .eq("unlocked_email_sent", false)
     .not("user_id", "is", null)
@@ -420,15 +473,35 @@ async function fetchUnsentMemories(
   return (data ?? []) as MemoryUnlockRow[];
 }
 
+async function countCapsuleMemories(
+  supabase: ReturnType<typeof getSupabaseAdminClient>,
+  capsuleId: string
+) {
+  const { count, error } = await supabase
+    .from("capsule_memories")
+    .select("id", { count: "exact", head: true })
+    .eq("capsule_id", capsuleId);
+
+  if (error) {
+    console.warn("[unlock-email-cron] Could not count capsule memories", {
+      capsuleId,
+      error: error.message,
+    });
+    return null;
+  }
+
+  return count ?? 0;
+}
+
 async function fetchUnsentCapsules(
   supabase: ReturnType<typeof getSupabaseAdminClient>,
   today: string
 ) {
   const { data, error } = await supabase
     .from("capsules")
-    .select("id, share_slug, owner_user_id, unlock_date")
+    .select("id, share_slug, owner_user_id, title, unlock_date")
     .lte("unlock_date", today)
-    .is("unlock_email_sent_at", null)
+    .is(CAPSULE_SENT_COLUMN, null)
     .order("unlock_date", { ascending: true })
     .limit(MAX_RECORDS_PER_TYPE);
 
@@ -515,6 +588,7 @@ async function markEmailSent(input: {
           unlock_email_last_error: null,
         }
       : {
+          capsule_unlock_email_sent_at: now,
           unlock_email_sent_at: now,
           unlock_email_last_error: null,
         };
@@ -527,7 +601,7 @@ async function markEmailSent(input: {
   const { data, error } =
     input.table === "memories"
       ? await query.eq("unlocked_email_sent", false).maybeSingle()
-      : await query.is("unlock_email_sent_at", null).maybeSingle();
+      : await query.is(CAPSULE_SENT_COLUMN, null).maybeSingle();
 
   if (error) {
     throw new Error(`Failed marking ${input.table} ${input.id} emailed: ${error.message}`);
@@ -571,7 +645,7 @@ async function claimEmailAttempt(input: {
   const { data, error } =
     input.table === "memories"
       ? await query.eq("unlocked_email_sent", false).maybeSingle()
-      : await query.is("unlock_email_sent_at", null).maybeSingle();
+      : await query.is(CAPSULE_SENT_COLUMN, null).maybeSingle();
 
   if (error) {
     throw new Error(`Failed claiming ${input.table} ${input.id}: ${error.message}`);
@@ -602,11 +676,13 @@ async function saveEmailFailure(input: {
 }) {
   const message =
     input.error instanceof Error ? input.error.message : "Unknown email failure.";
+  const sentColumn =
+    input.table === "memories" ? "unlock_email_sent_at" : CAPSULE_SENT_COLUMN;
   const { error } = await input.supabase
     .from(input.table)
     .update({ unlock_email_last_error: message.slice(0, 1000) })
     .eq("id", input.id)
-    .is("unlock_email_sent_at", null);
+    .is(sentColumn, null);
 
   if (error) {
     console.error("[unlock-email-cron] Failed saving email failure", {
@@ -633,4 +709,47 @@ function normalizeSiteUrl(value: string | undefined) {
   } catch {
     return null;
   }
+}
+
+function formatEmailDate(dateString: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${dateString}T00:00:00Z`));
+}
+
+function firstImageUrl(memory: MemoryUnlockRow) {
+  const mediaUrls = Array.isArray(memory.media_urls)
+    ? memory.media_urls.filter((item): item is string => typeof item === "string")
+    : [];
+  const firstUrl = [...mediaUrls, memory.media_url]
+    .filter((item): item is string => typeof item === "string" && item.length > 0)
+    .find((url) => !isVideoUrl(url));
+
+  return firstUrl ?? null;
+}
+
+function isVideoUrl(url: string) {
+  return /\.(mp4|webm|ogg|mov)$/i.test(url) || url.includes("video");
+}
+
+function dateInTimeZone(value: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(value);
+
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  if (!year || !month || !day) {
+    return dateOnly(value);
+  }
+
+  return `${year}-${month}-${day}`;
 }

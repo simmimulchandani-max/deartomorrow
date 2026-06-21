@@ -26,11 +26,20 @@ type Capsule = {
 };
 
 function dateOnly() {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 }
 
 function isReadyToUnlock(unlockDate: string | null) {
   return Boolean(unlockDate && unlockDate <= dateOnly());
+}
+
+function isLocked(unlockDate: string | null) {
+  return !isReadyToUnlock(unlockDate);
 }
 
 function formatDate(dateString: string | null) {
@@ -297,8 +306,9 @@ export default function TimelinePage() {
                 <h2 className="mb-4 text-2xl font-semibold text-[#4a3c31]">Standalone memories</h2>
                 <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                   {memories.map((memory) => {
-                    const ready = isReadyToUnlock(memory.unlock_date);
-                    const preview = firstMediaUrl(memory);
+                    const locked = isLocked(memory.unlock_date);
+                    const ready = !locked;
+                    const preview = locked ? null : firstMediaUrl(memory);
 
                     return (
                       <article key={memory.id} className="overflow-hidden rounded-2xl bg-gray-100 shadow-sm">

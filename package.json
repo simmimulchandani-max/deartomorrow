@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "email:dev": "react-email dev emails",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@react-email/components": "^1.0.12",
     "@supabase/supabase-js": "^2.101.1",
     "@tsparticles/engine": "^3.9.1",
     "@tsparticles/react": "^3.0.0",
@@ -28,6 +30,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "react-email": "^6.6.3",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
