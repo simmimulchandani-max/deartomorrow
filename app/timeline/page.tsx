@@ -8,7 +8,6 @@ import { hasDateArrived } from '@/lib/unlockDates';
 type Memory = {
   id: string;
   title: string;
-  message: string;
   unlock_date: string;
   created_at: string | null;
   media_url?: string | null;
@@ -163,7 +162,7 @@ export default function TimelinePage() {
         const [memoryResult, capsuleResult] = await Promise.all([
           supabase
             .from('memories')
-            .select('id, title, message, unlock_date, created_at, media_url, media_urls, user_id')
+            .select('id, title, unlock_date, created_at, media_url, media_urls, user_id')
             .eq('user_id', session.user.id)
             .order('created_at', { ascending: false }),
           fetch('/api/capsules', {
@@ -317,15 +316,14 @@ export default function TimelinePage() {
                         </div>
 
                         <div className="p-6">
-                          <div className="flex justify-end">
+                          <div className="flex items-start justify-between gap-3">
+                            <h3 className="min-w-0 break-words text-xl font-semibold text-[#4a3c31]">
+                              {memory.title || 'Untitled Memory'}
+                            </h3>
                             <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#4a3c31]">
                               {ready ? 'Ready' : 'Locked'}
                             </span>
                           </div>
-
-                          <p className="mt-3 line-clamp-3 whitespace-pre-wrap break-words text-sm leading-6 text-gray-600">
-                            {memory.message}
-                          </p>
 
                           <p className="mt-4 text-sm font-medium text-[#4a3c31]">{statusLabel(memory.unlock_date)}</p>
                           <p className="mt-1 text-xs text-gray-500">Saved {formatSavedDate(memory.created_at)}</p>

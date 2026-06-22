@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 const CONTACT_EMAIL = "hello@until-tomorrow.com";
 
@@ -9,8 +8,7 @@ const sections = [
     items: [
       "Account information, such as your email address when you sign in.",
       "Memory content you choose to upload, including photos, videos, messages, titles, unlock dates, and capsule contributions.",
-      "Basic usage information, such as pages visited, errors, and feature interactions, to help us improve the product.",
-      "Email delivery information, such as whether unlock reminders or notifications were sent successfully.",
+      "Feedback and support messages you choose to send us.",
     ],
   },
   {
@@ -61,6 +59,15 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-2xl font-semibold text-[#4a3c31]">Your Memories</h2>
             <p className="mt-3 text-base leading-8 text-[#5f5147]">
+              Your memories belong to you. We do not claim ownership of the photos,
+              videos, messages, or other content you upload. Your content remains
+              yours.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold text-[#4a3c31]">Private By Default</h2>
+            <p className="mt-3 text-base leading-8 text-[#5f5147]">
               Your memories are private by default. You control the unlock date and
               who can access them. If you create or share a capsule link, people
               with that link may be able to contribute or view content depending on
@@ -82,8 +89,7 @@ export default function PrivacyPage() {
             <p className="mt-3 text-base leading-8 text-[#5f5147]">
               We do not sell your personal information. We may share limited
               information with service providers that help us operate the site, such
-              as authentication, hosting, storage, analytics, and email delivery
-              providers.
+              as authentication, hosting, storage, and email delivery providers.
             </p>
           </section>
 
@@ -103,16 +109,17 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-2xl font-semibold text-[#4a3c31]">Security</h2>
             <p className="mt-3 text-base leading-8 text-[#5f5147]">
-              We use reasonable safeguards to protect your content, but no online
-              service can guarantee complete security. Please avoid uploading
-              anything you would not want stored online.
+              We take reasonable measures to protect your content and account
+              information. While no online service can guarantee perfect security,
+              protecting your memories is important to us.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold text-[#4a3c31]">Children</h2>
             <p className="mt-3 text-base leading-8 text-[#5f5147]">
-              Until Tomorrow is not intended for children under 13.
+              To comply with privacy regulations, Until Tomorrow is available to
+              users who are at least 13 years old.
             </p>
           </section>
 
@@ -127,18 +134,14 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-2xl font-semibold text-[#4a3c31]">Contact</h2>
             <p className="mt-3 text-base leading-8 text-[#5f5147]">
-              Questions or deletion requests can be sent to{" "}
+              For questions, privacy requests, account deletion requests, or support,
+              contact:
+            </p>
+            <p className="mt-3 text-base leading-8 text-[#5f5147]">
               <a className="font-semibold underline" href={`mailto:${CONTACT_EMAIL}`}>
                 {CONTACT_EMAIL}
               </a>
-              .
             </p>
-            <Link
-              href="/contact"
-              className="mt-5 inline-flex min-h-11 items-center justify-center rounded-full bg-[#f7c7b6] px-5 text-sm font-semibold text-[#4a3c31] transition hover:bg-[#f4bba8]"
-            >
-              Contact / Feedback
-            </Link>
           </section>
         </div>
       </article>

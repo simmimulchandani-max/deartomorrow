@@ -210,14 +210,6 @@ export default function Home() {
                 )}
               </div>
 
-              <div className="mt-5 max-w-lg rounded-[1.5rem] border border-white/70 bg-white/45 px-5 py-4 text-left shadow-sm backdrop-blur">
-                <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#4a3c31]">
-                  Private by default
-                </p>
-                <p className="mt-2 text-sm leading-7 text-[#6f6259] sm:text-base">
-                  You control the unlock date and who can access your memories.
-                </p>
-              </div>
             </div>
 
             <aside aria-label="Example unlocked memory" className="mx-auto w-full max-w-md">
@@ -311,6 +303,15 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="mx-auto mt-7 max-w-2xl text-center text-[#7d6f65]">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em]">
+            Private by default 🔒
+          </p>
+          <p className="mt-2 text-sm leading-6">
+            You control the unlock date and who can access your memories.
+          </p>
         </section>
       </section>
     </main>
