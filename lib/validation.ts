@@ -1,4 +1,5 @@
 import { getStorageBucketName } from "@/lib/storageBucket";
+export { dateOnly, hasDateArrived } from "@/lib/unlockDates";
 
 export const MEMORY_TITLE_MAX = 140;
 export const MEMORY_MESSAGE_MAX = 4000;
@@ -27,10 +28,6 @@ export function isValidDateString(value: string) {
 
   const parsed = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-}
-
-export function dateOnly(value: Date) {
-  return value.toISOString().slice(0, 10);
 }
 
 export function isSafeIdentifier(value: string) {

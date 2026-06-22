@@ -2,6 +2,7 @@ import "server-only";
 
 import { getStorageBucketName } from "@/lib/storageBucket";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
+export { dateOnly, hasDateArrived } from "@/lib/unlockDates";
 
 export type CapsuleSummary = {
   id: string;
@@ -49,14 +50,6 @@ type RawCapsuleMemory = {
 
 export function isValidDateString(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
-
-export function dateOnly(value: Date) {
-  return value.toISOString().slice(0, 10);
-}
-
-export function hasDateArrived(dateString: string) {
-  return dateString <= dateOnly(new Date());
 }
 
 export function normalizeCapsule(row: RawCapsule): CapsuleSummary {

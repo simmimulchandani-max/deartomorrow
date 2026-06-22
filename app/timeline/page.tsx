@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { getSupabaseClient } from '@/lib/supabaseClient';
+import { hasDateArrived } from '@/lib/unlockDates';
 
 type Memory = {
   id: string;
@@ -25,17 +26,8 @@ type Capsule = {
   createdAt: string | null;
 };
 
-function dateOnly() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
-}
-
 function isReadyToUnlock(unlockDate: string | null) {
-  return Boolean(unlockDate && unlockDate <= dateOnly());
+  return hasDateArrived(unlockDate);
 }
 
 function isLocked(unlockDate: string | null) {
@@ -66,16 +58,20 @@ function statusLabel(unlockDate: string) {
   return isReadyToUnlock(unlockDate) ? 'Ready to open' : `Unlocks ${formatDate(unlockDate)}`;
 }
 
-function firstMediaUrl(memory: Memory) {
+function firstImageUrl(memory: Memory) {
   const mediaUrls = Array.isArray(memory.media_urls)
     ? memory.media_urls.filter((url): url is string => typeof url === 'string' && url.length > 0)
     : [];
 
-  return mediaUrls[0] ?? memory.media_url ?? null;
+  const firstUrl = [...mediaUrls, memory.media_url]
+    .filter((url): url is string => typeof url === 'string' && url.length > 0)
+    .find(isImageUrl);
+
+  return firstUrl ?? null;
 }
 
-function isVideoUrl(url: string) {
-  return /\.(mp4|webm|ogg|mov)$/i.test(url) || url.includes('video');
+function isImageUrl(url: string) {
+  return /\.(avif|gif|heic|jpeg|jpg|png|webp)(?:$|[?#])/i.test(url);
 }
 
 function WaitingWaveCard({ label = 'Waiting to bloom' }: { label?: string }) {
@@ -100,22 +96,22 @@ function WaitingWaveCard({ label = 'Waiting to bloom' }: { label?: string }) {
 }
 
 function TimelinePreview({
+  locked,
   mediaUrl,
   label,
 }: {
+  locked?: boolean;
   mediaUrl?: string | null;
   label: string;
 }) {
+  const previewUrl = locked ? null : mediaUrl;
+
   return (
     <div className="rounded-[1.5rem] bg-white/70 p-4">
-      {mediaUrl ? (
+      {previewUrl ? (
         <div className="h-36 w-full overflow-hidden rounded-[1rem] border border-white/70 bg-white shadow-sm">
-          {isVideoUrl(mediaUrl) ? (
-            <video src={mediaUrl} muted playsInline className="h-full w-full object-cover" />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={mediaUrl} alt="" className="h-full w-full object-cover" />
-          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={previewUrl} alt="" className="h-full w-full scale-105 object-cover blur-sm" />
         </div>
       ) : (
         <WaitingWaveCard label={label} />
@@ -308,22 +304,20 @@ export default function TimelinePage() {
                   {memories.map((memory) => {
                     const locked = isLocked(memory.unlock_date);
                     const ready = !locked;
-                    const preview = locked ? null : firstMediaUrl(memory);
+                    const preview = ready ? firstImageUrl(memory) : null;
 
                     return (
                       <article key={memory.id} className="overflow-hidden rounded-2xl bg-gray-100 shadow-sm">
                         <div className="px-6 pt-6">
                           <TimelinePreview
+                            locked={locked}
                             mediaUrl={preview}
                             label={ready ? 'Ready to bloom' : 'Waiting to bloom'}
                           />
                         </div>
 
                         <div className="p-6">
-                          <div className="flex items-start justify-between gap-3">
-                            <h3 className="min-w-0 break-words text-xl font-semibold text-[#4a3c31]">
-                              {memory.title || 'Untitled Memory'}
-                            </h3>
+                          <div className="flex justify-end">
                             <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#4a3c31]">
                               {ready ? 'Ready' : 'Locked'}
                             </span>
@@ -370,6 +364,7 @@ export default function TimelinePage() {
                       <article key={capsule.id} className="overflow-hidden rounded-2xl bg-gray-100 shadow-sm">
                         <div className="px-6 pt-6">
                           <TimelinePreview
+                            locked={!ready}
                             label={ready ? 'Ready to bloom' : 'Waiting to bloom'}
                           />
                         </div>

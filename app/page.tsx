@@ -209,6 +209,15 @@ export default function Home() {
                   </form>
                 )}
               </div>
+
+              <div className="mt-5 max-w-lg rounded-[1.5rem] border border-white/70 bg-white/45 px-5 py-4 text-left shadow-sm backdrop-blur">
+                <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#4a3c31]">
+                  Private by default
+                </p>
+                <p className="mt-2 text-sm leading-7 text-[#6f6259] sm:text-base">
+                  You control the unlock date and who can access your memories.
+                </p>
+              </div>
             </div>
 
             <aside aria-label="Example unlocked memory" className="mx-auto w-full max-w-md">
