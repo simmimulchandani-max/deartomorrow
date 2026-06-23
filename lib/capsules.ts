@@ -198,6 +198,12 @@ export async function createCapsuleMemory(input: {
     .single();
 
   if (error) {
+    console.error("Create capsule memory insert error:", {
+      capsuleId: input.capsuleId,
+      memoryId: input.id,
+      mediaUrlCount: input.mediaUrls.length,
+      error,
+    });
     throw new Error(error.message);
   }
 

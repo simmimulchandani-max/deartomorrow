@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { generateId } from '@/lib/generateId';
 import {
   CONTRIBUTOR_NAME_MAX,
-  MAX_MEDIA_FILES,
   MEMORY_MESSAGE_MAX,
   MEMORY_TITLE_MAX,
   validateMediaFiles,
@@ -85,7 +84,7 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
     setErrorMessage('');
 
     try {
-      const memoryId = generateId();
+      let memoryId = generateId();
 
       const selectedFiles = fileInputRef.current?.files
         ? Array.from(fileInputRef.current.files)
@@ -124,10 +123,15 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
           }
         );
 
-        const uploadTargetPayload = await uploadTargetResponse.json();
+        const uploadTargetPayload = await uploadTargetResponse.json().catch(() => null);
 
         if (!uploadTargetResponse.ok) {
+          console.error('Capsule upload target error:', uploadTargetPayload);
           throw new Error(uploadTargetPayload?.error || 'Failed to prepare uploads.');
+        }
+
+        if (typeof uploadTargetPayload?.memoryId === 'string') {
+          memoryId = uploadTargetPayload.memoryId;
         }
 
         const uploadTargets = Array.isArray(uploadTargetPayload.uploads)
@@ -145,13 +149,26 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
             const uploadResponse = await fetch(target.signedUrl, {
               method: 'PUT',
               headers: {
-                'Content-Type': file.type || 'application/octet-stream',
+                'Content-Type':
+                  typeof target.contentType === 'string' && target.contentType
+                    ? target.contentType
+                    : file.type || 'application/octet-stream',
               },
               body: file,
             });
 
             if (!uploadResponse.ok) {
-              throw new Error('One of the attachments could not be uploaded.');
+              const uploadErrorText = await uploadResponse.text().catch(() => '');
+              console.error('Capsule media upload error:', {
+                status: uploadResponse.status,
+                statusText: uploadResponse.statusText,
+                fileName: file.name,
+                targetPath: target.path,
+                response: uploadErrorText,
+              });
+              throw new Error(
+                `Could not upload ${file.name}. Please try again or choose a smaller file.`
+              );
             }
 
             return target.publicUrl as string;
@@ -179,9 +196,10 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
         }
       );
 
-      const payload = await response.json();
+      const payload = await response.json().catch(() => null);
 
       if (!response.ok) {
+        console.error('Capsule memory submission error:', payload);
         throw new Error(payload?.error || 'Failed to submit memory.');
       }
 
@@ -194,6 +212,7 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
 
       setSubmitted(true);
     } catch (error) {
+      console.error('Capsule contribution submit error:', error);
       setErrorMessage(
         error instanceof Error ? error.message : 'Failed to submit memory.'
       );
@@ -324,6 +343,25 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
                 onChange={handleFileChange}
                 className="hidden"
               />
+
+              {selectedFileNames.length > 0 ? (
+                <div className="rounded-2xl bg-white px-4 py-3 text-sm text-gray-600">
+                  <p className="font-semibold text-[#4a3c31]">Selected files</p>
+                  <ul className="mt-2 space-y-1">
+                    {selectedFileNames.map((fileName) => (
+                      <li key={fileName} className="truncate">
+                        {fileName}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {errorMessage ? (
+                <p className="rounded-2xl border border-[#e7b6a4] bg-white px-4 py-3 text-sm text-[#9b4d3a]">
+                  {errorMessage}
+                </p>
+              ) : null}
 
               <button
                 type="submit"

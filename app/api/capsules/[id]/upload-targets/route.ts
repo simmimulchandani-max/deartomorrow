@@ -89,6 +89,13 @@ export async function POST(request: Request, context: RouteContext) {
           .createSignedUploadUrl(storagePath);
 
         if (error || !data) {
+          console.error("Create capsule signed upload URL error:", {
+            bucket: storageBucket,
+            path: storagePath,
+            capsuleId: capsule.id,
+            memoryId,
+            error,
+          });
           throw new Error(error?.message || "Failed to create an upload target.");
         }
 
