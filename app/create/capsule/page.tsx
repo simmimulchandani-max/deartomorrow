@@ -21,6 +21,10 @@ export default function CreateCapsulePage() {
   const [description, setDescription] = useState('');
   const [submissionDeadline, setSubmissionDeadline] = useState('');
   const [unlockDate, setUnlockDate] = useState('');
+  const [isGift, setIsGift] = useState(false);
+  const [recipientName, setRecipientName] = useState('');
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [recipientNote, setRecipientNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [sharePath, setSharePath] = useState('');
@@ -56,6 +60,10 @@ export default function CreateCapsulePage() {
           description,
           submissionDeadline,
           unlockDate,
+          isGift,
+          recipientName: isGift ? recipientName : null,
+          recipientEmail: isGift ? recipientEmail : null,
+          recipientNote: isGift ? recipientNote : null,
         }),
       });
 
@@ -72,6 +80,10 @@ export default function CreateCapsulePage() {
       setDescription('');
       setSubmissionDeadline('');
       setUnlockDate('');
+      setIsGift(false);
+      setRecipientName('');
+      setRecipientEmail('');
+      setRecipientNote('');
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : 'Failed to create capsule.'
@@ -228,6 +240,58 @@ export default function CreateCapsulePage() {
                   required
                 />
               </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#eadfce] bg-white/60 p-4">
+              <label className="flex items-start gap-3 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={isGift}
+                  onChange={(event) => setIsGift(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-[#4a3c31] focus:ring-gray-400"
+                />
+                <span>Send this capsule to someone else on the unlock date</span>
+              </label>
+
+              {isGift ? (
+                <div className="mt-5 space-y-5">
+                  <div>
+                    <label className="block mb-2 font-medium text-gray-700">
+                      RECIPIENT NAME
+                    </label>
+                    <input
+                      type="text"
+                      value={recipientName}
+                      onChange={(event) => setRecipientName(event.target.value)}
+                      className="w-full rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-2 font-medium text-gray-700">
+                      RECIPIENT EMAIL
+                    </label>
+                    <input
+                      type="email"
+                      value={recipientEmail}
+                      onChange={(event) => setRecipientEmail(event.target.value)}
+                      className="w-full rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                      required={isGift}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-2 font-medium text-gray-700">
+                      OPTIONAL NOTE
+                    </label>
+                    <textarea
+                      value={recipientNote}
+                      onChange={(event) => setRecipientNote(event.target.value)}
+                      className="h-28 w-full rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                    />
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             {errorMessage ? (

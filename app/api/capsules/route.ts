@@ -19,6 +19,10 @@ type CreateCapsuleRequest = {
   description?: string;
   submissionDeadline?: string;
   unlockDate?: string;
+  isGift?: boolean;
+  recipientName?: string;
+  recipientEmail?: string;
+  recipientNote?: string;
 };
 
 export async function GET(request: Request) {
@@ -56,6 +60,10 @@ export async function POST(request: Request) {
     const description = body.description?.trim() || null;
     const submissionDeadline = body.submissionDeadline?.trim() ?? "";
     const unlockDate = body.unlockDate?.trim() ?? "";
+    const isGift = body.isGift === true;
+    const recipientName = isGift ? body.recipientName?.trim() || null : null;
+    const recipientEmail = isGift ? body.recipientEmail?.trim().toLowerCase() || null : null;
+    const recipientNote = isGift ? body.recipientNote?.trim() || null : null;
     const today = dateOnly(new Date());
 
     if (!title) {
@@ -93,6 +101,10 @@ export async function POST(request: Request) {
       );
     }
 
+    if (isGift && !recipientEmail) {
+      return Response.json({ error: "Recipient email is required for gift capsules." }, { status: 400 });
+    }
+
     const capsule = await createCapsule({
       ownerUserId: user.id,
       title,
@@ -100,6 +112,10 @@ export async function POST(request: Request) {
       submissionDeadline,
       unlockDate,
       shareSlug: generateId(),
+      isGift,
+      recipientName,
+      recipientEmail,
+      recipientNote,
     });
 
     return Response.json(

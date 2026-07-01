@@ -2,6 +2,8 @@ import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { dateOnly } from "@/lib/validation";
 import {
   buildCapsuleUnlockEmailTemplate,
+  buildGiftCapsuleOwnerConfirmationEmailTemplate,
+  buildGiftCapsuleRecipientEmailTemplate,
   buildMemoryUnlockEmailTemplate,
 } from "@/lib/emailTemplates";
 import { Resend } from "resend";
@@ -22,6 +24,14 @@ type CapsuleUnlockRow = {
   owner_user_id: string;
   title: string;
   unlock_date: string;
+};
+
+type GiftCapsuleUnlockRow = CapsuleUnlockRow & {
+  recipient_name: string | null;
+  recipient_email: string | null;
+  recipient_note: string | null;
+  recipient_email_sent_at: string | null;
+  owner_gift_confirmation_sent_at: string | null;
 };
 
 type SendResult = {
@@ -153,6 +163,7 @@ async function handleUnlockEmailRequest(request: Request) {
 
     const supabase = getSupabaseAdminClient();
     const emailCache = new Map<string, string | null>();
+    const displayNameCache = new Map<string, string | null>();
 
     const memoryResult = await sendMemoryUnlockEmails({
       supabase,
@@ -173,6 +184,7 @@ async function handleUnlockEmailRequest(request: Request) {
       logoUrl,
       from: fromEmail,
       emailCache,
+      displayNameCache,
       dryRun,
       runId,
     });
@@ -338,6 +350,7 @@ async function sendCapsuleUnlockEmails(input: {
   logoUrl: string;
   from: string;
   emailCache: Map<string, string | null>;
+  displayNameCache: Map<string, string | null>;
   dryRun: boolean;
   runId: string;
 }) {
@@ -450,6 +463,142 @@ async function sendCapsuleUnlockEmails(input: {
     }
   }
 
+  const giftRows = await fetchUnsentGiftCapsules(input.supabase, input.today);
+  result.found += giftRows.length;
+
+  console.log("[unlock-email-cron] Gift capsules ready for email", {
+    runId: input.runId,
+    today: input.today,
+    found: giftRows.length,
+  });
+
+  for (const capsule of giftRows) {
+    try {
+      const recipient = capsule.recipient_email?.trim().toLowerCase() || null;
+      if (!recipient) {
+        result.skippedNoUser += 1;
+        console.warn("[unlock-email-cron] Skipping gift capsule without recipient email", {
+          runId: input.runId,
+          capsuleId: capsule.id,
+        });
+        continue;
+      }
+
+      const ownerEmail = await getUserEmail(input.supabase, capsule.owner_user_id, input.emailCache);
+      const ownerDisplayName = await getUserDisplayName(
+        input.supabase,
+        capsule.owner_user_id,
+        input.displayNameCache
+      );
+      const unlockLink = new URL(`/capsule/${capsule.share_slug}/unlock`, input.siteUrl).toString();
+
+      console.log("[unlock-email-cron] Processing gift capsule", {
+        runId: input.runId,
+        capsuleId: capsule.id,
+        title: capsule.title,
+        ownerUserId: capsule.owner_user_id,
+        unlockDate: capsule.unlock_date,
+        recipient,
+        hasOwnerEmail: Boolean(ownerEmail),
+      });
+
+      if (input.dryRun) {
+        result.skippedDryRun += 1;
+        continue;
+      }
+
+      const claimed = await claimGiftCapsuleEmailAttempt({
+        supabase: input.supabase,
+        id: capsule.id,
+        runId: input.runId,
+      });
+      if (!claimed) {
+        result.skippedClaimed += 1;
+        continue;
+      }
+
+      if (!capsule.recipient_email_sent_at) {
+        const template = buildGiftCapsuleRecipientEmailTemplate({
+          logoUrl: input.logoUrl,
+          recipientName: capsule.recipient_name,
+          ownerDisplayName,
+          recipientNote: capsule.recipient_note,
+          unlockUrl: unlockLink,
+        });
+        const emailResponse = await sendEmailViaResend({
+          resend: input.resend,
+          from: input.from,
+          to: recipient,
+          subject: "Your friends made you something for your birthday \uD83D\uDC8C",
+          text: template.text,
+          react: template.react,
+          runId: input.runId,
+          recordType: "gift-capsule-recipient",
+          recordId: capsule.id,
+        });
+
+        await markGiftCapsuleEmailSent({
+          supabase: input.supabase,
+          id: capsule.id,
+          column: "recipient_email_sent_at",
+          runId: input.runId,
+          resendId: emailResponse.data?.id ?? null,
+        });
+        result.sent += 1;
+      }
+
+      if (!capsule.owner_gift_confirmation_sent_at) {
+        if (!ownerEmail) {
+          result.skippedNoUser += 1;
+          console.warn("[unlock-email-cron] Skipping gift owner confirmation without owner email", {
+            runId: input.runId,
+            capsuleId: capsule.id,
+            userId: capsule.owner_user_id,
+          });
+          continue;
+        }
+
+        const template = buildGiftCapsuleOwnerConfirmationEmailTemplate({
+          logoUrl: input.logoUrl,
+          recipientName: capsule.recipient_name,
+        });
+        const emailResponse = await sendEmailViaResend({
+          resend: input.resend,
+          from: input.from,
+          to: ownerEmail,
+          subject: "Your gift capsule was sent \uD83D\uDC8C",
+          text: template.text,
+          react: template.react,
+          runId: input.runId,
+          recordType: "gift-capsule-owner-confirmation",
+          recordId: capsule.id,
+        });
+
+        await markGiftCapsuleEmailSent({
+          supabase: input.supabase,
+          id: capsule.id,
+          column: "owner_gift_confirmation_sent_at",
+          runId: input.runId,
+          resendId: emailResponse.data?.id ?? null,
+        });
+        result.sent += 1;
+      }
+    } catch (error) {
+      result.failed += 1;
+      await saveEmailFailure({
+        supabase: input.supabase,
+        table: "capsules",
+        id: capsule.id,
+        error,
+      });
+      console.error("[unlock-email-cron] Failed gift capsule email", {
+        runId: input.runId,
+        capsuleId: capsule.id,
+        error,
+      });
+    }
+  }
+
   return result;
 }
 
@@ -501,6 +650,7 @@ async function fetchUnsentCapsules(
     .from("capsules")
     .select("id, share_slug, owner_user_id, title, unlock_date")
     .lte("unlock_date", today)
+    .eq("is_gift", false)
     .is(CAPSULE_SENT_COLUMN, null)
     .order("unlock_date", { ascending: true })
     .limit(MAX_RECORDS_PER_TYPE);
@@ -510,6 +660,27 @@ async function fetchUnsentCapsules(
   }
 
   return (data ?? []) as CapsuleUnlockRow[];
+}
+
+async function fetchUnsentGiftCapsules(
+  supabase: ReturnType<typeof getSupabaseAdminClient>,
+  today: string
+) {
+  const { data, error } = await supabase
+    .from("capsules")
+    .select("id, share_slug, owner_user_id, title, unlock_date, recipient_name, recipient_email, recipient_note, recipient_email_sent_at, owner_gift_confirmation_sent_at")
+    .lte("unlock_date", today)
+    .eq("is_gift", true)
+    .not("recipient_email", "is", null)
+    .or("recipient_email_sent_at.is.null,owner_gift_confirmation_sent_at.is.null")
+    .order("unlock_date", { ascending: true })
+    .limit(MAX_RECORDS_PER_TYPE);
+
+  if (error) {
+    throw new Error(`Failed to query gift capsules: ${error.message}`);
+  }
+
+  return (data ?? []) as GiftCapsuleUnlockRow[];
 }
 
 async function getUserEmail(
@@ -534,6 +705,35 @@ async function getUserEmail(
   const email = data.user.email.trim().toLowerCase();
   cache.set(userId, email);
   return email;
+}
+
+async function getUserDisplayName(
+  supabase: ReturnType<typeof getSupabaseAdminClient>,
+  userId: string,
+  cache: Map<string, string | null>
+) {
+  if (cache.has(userId)) {
+    return cache.get(userId) ?? null;
+  }
+
+  const { data, error } = await supabase.auth.admin.getUserById(userId);
+  if (error || !data.user) {
+    console.warn("[unlock-email-cron] Could not resolve user display name", {
+      userId,
+      error: error?.message ?? null,
+    });
+    cache.set(userId, null);
+    return null;
+  }
+
+  const metadata = data.user.user_metadata as Record<string, unknown>;
+  const displayName = ["full_name", "name", "display_name"]
+    .map((key) => metadata[key])
+    .find((value): value is string => typeof value === "string" && value.trim().length > 0)
+    ?.trim() ?? null;
+
+  cache.set(userId, displayName);
+  return displayName;
 }
 
 async function sendEmailViaResend(input: {
@@ -625,6 +825,47 @@ async function markEmailSent(input: {
   });
 }
 
+async function markGiftCapsuleEmailSent(input: {
+  supabase: ReturnType<typeof getSupabaseAdminClient>;
+  id: string;
+  column: "recipient_email_sent_at" | "owner_gift_confirmation_sent_at";
+  runId: string;
+  resendId: string | null;
+}) {
+  const now = new Date().toISOString();
+  const { data, error } = await input.supabase
+    .from("capsules")
+    .update({
+      [input.column]: now,
+      unlock_email_last_error: null,
+    })
+    .eq("id", input.id)
+    .is(input.column, null)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed marking gift capsule ${input.id} ${input.column}: ${error.message}`);
+  }
+
+  if (!data) {
+    console.warn("[unlock-email-cron] Gift email sent but row was already marked by another run", {
+      runId: input.runId,
+      id: input.id,
+      column: input.column,
+      resendId: input.resendId,
+    });
+    return;
+  }
+
+  console.log("[unlock-email-cron] Marked gift email as sent", {
+    runId: input.runId,
+    id: input.id,
+    column: input.column,
+    resendId: input.resendId,
+  });
+}
+
 async function claimEmailAttempt(input: {
   supabase: ReturnType<typeof getSupabaseAdminClient>;
   table: "memories" | "capsules";
@@ -663,6 +904,44 @@ async function claimEmailAttempt(input: {
   console.log("[unlock-email-cron] Claimed email attempt", {
     runId: input.runId,
     table: input.table,
+    id: input.id,
+  });
+  return true;
+}
+
+async function claimGiftCapsuleEmailAttempt(input: {
+  supabase: ReturnType<typeof getSupabaseAdminClient>;
+  id: string;
+  runId: string;
+}) {
+  const staleCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const { data, error } = await input.supabase
+    .from("capsules")
+    .update({
+      unlock_email_attempted_at: new Date().toISOString(),
+      unlock_email_last_error: null,
+    })
+    .eq("id", input.id)
+    .eq("is_gift", true)
+    .or("recipient_email_sent_at.is.null,owner_gift_confirmation_sent_at.is.null")
+    .or(`unlock_email_attempted_at.is.null,unlock_email_attempted_at.lt.${staleCutoff}`)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed claiming gift capsule ${input.id}: ${error.message}`);
+  }
+
+  if (!data) {
+    console.warn("[unlock-email-cron] Skipping gift capsule already claimed by another run", {
+      runId: input.runId,
+      id: input.id,
+    });
+    return false;
+  }
+
+  console.log("[unlock-email-cron] Claimed gift capsule email attempt", {
+    runId: input.runId,
     id: input.id,
   });
   return true;

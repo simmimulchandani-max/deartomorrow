@@ -13,6 +13,10 @@ export type CapsuleSummary = {
   unlockDate: string;
   shareSlug: string;
   createdAt: string | null;
+  isGift: boolean;
+  recipientName: string | null;
+  recipientEmail: string | null;
+  recipientNote: string | null;
 };
 
 export type CapsuleMemory = {
@@ -35,6 +39,10 @@ type RawCapsule = {
   unlock_date: string;
   share_slug: string;
   created_at?: string | null;
+  is_gift?: boolean | null;
+  recipient_name?: string | null;
+  recipient_email?: string | null;
+  recipient_note?: string | null;
 };
 
 type RawCapsuleMemory = {
@@ -62,6 +70,10 @@ export function normalizeCapsule(row: RawCapsule): CapsuleSummary {
     unlockDate: row.unlock_date,
     shareSlug: row.share_slug,
     createdAt: row.created_at ?? null,
+    isGift: row.is_gift ?? false,
+    recipientName: row.recipient_name ?? null,
+    recipientEmail: row.recipient_email ?? null,
+    recipientNote: row.recipient_note ?? null,
   };
 }
 
@@ -108,6 +120,10 @@ export async function createCapsule(input: {
   submissionDeadline: string;
   unlockDate: string;
   shareSlug: string;
+  isGift?: boolean;
+  recipientName?: string | null;
+  recipientEmail?: string | null;
+  recipientNote?: string | null;
 }) {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
@@ -119,6 +135,10 @@ export async function createCapsule(input: {
       submission_deadline: input.submissionDeadline,
       unlock_date: input.unlockDate,
       share_slug: input.shareSlug,
+      is_gift: input.isGift ?? false,
+      recipient_name: input.isGift ? input.recipientName : null,
+      recipient_email: input.isGift ? input.recipientEmail : null,
+      recipient_note: input.isGift ? input.recipientNote : null,
     })
     .select("*")
     .single();
