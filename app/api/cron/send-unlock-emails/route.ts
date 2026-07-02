@@ -43,6 +43,19 @@ type SendResult = {
   failed: number;
 };
 
+type UnlockEmailDiagnostics = {
+  memories: {
+    due: number;
+    unsent: number;
+    unsentWithUser: number;
+  };
+  capsules: {
+    due: number;
+    unsentOwner: number;
+    unsentGift: number;
+  };
+};
+
 const MAX_RECORDS_PER_TYPE = 200;
 const DEFAULT_FROM_EMAIL = "Until Tomorrow <onboarding@resend.dev>";
 const CAPSULE_SENT_COLUMN = "capsule_unlock_email_sent_at";
@@ -51,6 +64,7 @@ const LOGO_PATH = "/logo.png";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
   return handleUnlockEmailRequest(request);
@@ -68,12 +82,22 @@ async function handleUnlockEmailRequest(request: Request) {
   const isLocalDev = process.env.NODE_ENV !== "production";
   const dryRun = url.searchParams.get("dryRun") === "true";
   const testEmail = url.searchParams.get("testEmail")?.trim() || null;
+  const vercelCronSchedule = request.headers.get("x-vercel-cron-schedule");
+  const testSecret = process.env.TEST_UNLOCK_EMAIL_SECRET;
+  const suppliedTestSecret =
+    request.headers.get("x-unlock-test-secret") ??
+    url.searchParams.get("testSecret");
+  const isCronAuthorized = Boolean(cronSecret && authHeader === `Bearer ${cronSecret}`);
+  const isTestAuthorized = Boolean(testSecret && suppliedTestSecret === testSecret);
 
-  if (!isLocalDev && (!cronSecret || authHeader !== `Bearer ${cronSecret}`)) {
+  if (!isLocalDev && !isCronAuthorized && !isTestAuthorized) {
     console.warn("[unlock-email-cron] Unauthorized request", {
       runId,
       hasCronSecret: Boolean(cronSecret),
+      hasTestUnlockEmailSecret: Boolean(testSecret),
       hasAuthorizationHeader: Boolean(authHeader),
+      hasSuppliedTestSecret: Boolean(suppliedTestSecret),
+      vercelCronSchedule,
     });
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -88,6 +112,7 @@ async function handleUnlockEmailRequest(request: Request) {
     runId,
     dryRun,
     testMode: Boolean(testEmail),
+    authMode: isCronAuthorized ? "cron" : isTestAuthorized ? "manual-test" : "local",
     nodeEnv: process.env.NODE_ENV,
     utcNow: new Date().toISOString(),
     fromEmail,
@@ -97,7 +122,9 @@ async function handleUnlockEmailRequest(request: Request) {
     hasResolvedSiteUrl: Boolean(siteUrl),
     hasSupabaseUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
     hasSupabaseServiceRole: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+    hasTestUnlockEmailSecret: Boolean(testSecret),
     vercelCronSchedule: "0 14 * * *",
+    vercelCronScheduleHeader: vercelCronSchedule,
     cronTimezone: "UTC",
     appTimeZone: APP_TIME_ZONE,
   });
@@ -120,6 +147,7 @@ async function handleUnlockEmailRequest(request: Request) {
     const now = new Date();
     const today = dateInTimeZone(now, APP_TIME_ZONE);
     const logoUrl = new URL(LOGO_PATH, siteUrl).toString();
+    let diagnostics: UnlockEmailDiagnostics | null = null;
 
     if (testEmail) {
       const template = buildCapsuleUnlockEmailTemplate({
@@ -164,6 +192,11 @@ async function handleUnlockEmailRequest(request: Request) {
     const supabase = getSupabaseAdminClient();
     const emailCache = new Map<string, string | null>();
     const displayNameCache = new Map<string, string | null>();
+    diagnostics = await logUnlockEmailDiagnostics({
+      supabase,
+      today,
+      runId,
+    });
 
     const memoryResult = await sendMemoryUnlockEmails({
       supabase,
@@ -196,6 +229,7 @@ async function handleUnlockEmailRequest(request: Request) {
       dryRun,
       memories: memoryResult,
       capsules: capsuleResult,
+      diagnostics,
     });
 
     return Response.json({
@@ -206,6 +240,7 @@ async function handleUnlockEmailRequest(request: Request) {
       runId,
       memories: memoryResult,
       capsules: capsuleResult,
+      diagnostics,
     }, { status: failed > 0 ? 207 : 200 });
   } catch (error) {
     console.error("[unlock-email-cron] Fatal error", { runId, error });
@@ -620,6 +655,108 @@ async function fetchUnsentMemories(
   }
 
   return (data ?? []) as MemoryUnlockRow[];
+}
+
+async function logUnlockEmailDiagnostics(input: {
+  supabase: ReturnType<typeof getSupabaseAdminClient>;
+  today: string;
+  runId: string;
+}): Promise<UnlockEmailDiagnostics | null> {
+  try {
+    const [
+      dueMemories,
+      unsentMemories,
+      unsentMemoriesWithUser,
+      dueCapsules,
+      unsentOwnerCapsules,
+      unsentGiftCapsules,
+    ] = await Promise.all([
+      countRows(
+        input.supabase
+          .from("memories")
+          .select("id", { count: "exact", head: true })
+          .lte("unlock_date", input.today)
+      ),
+      countRows(
+        input.supabase
+          .from("memories")
+          .select("id", { count: "exact", head: true })
+          .lte("unlock_date", input.today)
+          .eq("unlocked_email_sent", false)
+      ),
+      countRows(
+        input.supabase
+          .from("memories")
+          .select("id", { count: "exact", head: true })
+          .lte("unlock_date", input.today)
+          .eq("unlocked_email_sent", false)
+          .not("user_id", "is", null)
+      ),
+      countRows(
+        input.supabase
+          .from("capsules")
+          .select("id", { count: "exact", head: true })
+          .lte("unlock_date", input.today)
+      ),
+      countRows(
+        input.supabase
+          .from("capsules")
+          .select("id", { count: "exact", head: true })
+          .lte("unlock_date", input.today)
+          .eq("is_gift", false)
+          .is(CAPSULE_SENT_COLUMN, null)
+      ),
+      countRows(
+        input.supabase
+          .from("capsules")
+          .select("id", { count: "exact", head: true })
+          .lte("unlock_date", input.today)
+          .eq("is_gift", true)
+          .not("recipient_email", "is", null)
+          .or("recipient_email_sent_at.is.null,owner_gift_confirmation_sent_at.is.null")
+      ),
+    ]);
+
+    const diagnostics = {
+      memories: {
+        due: dueMemories,
+        unsent: unsentMemories,
+        unsentWithUser: unsentMemoriesWithUser,
+      },
+      capsules: {
+        due: dueCapsules,
+        unsentOwner: unsentOwnerCapsules,
+        unsentGift: unsentGiftCapsules,
+      },
+    };
+
+    console.log("[unlock-email-cron] Query diagnostics", {
+      runId: input.runId,
+      today: input.today,
+      ...diagnostics,
+    });
+
+    return diagnostics;
+  } catch (error) {
+    console.error("[unlock-email-cron] Query diagnostics failed", {
+      runId: input.runId,
+      today: input.today,
+      error,
+    });
+    return null;
+  }
+}
+
+async function countRows(
+  query: PromiseLike<{ count: number | null; error: { message: string } | null }>
+) {
+  const { count, error } = await query;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return count ?? 0;
 }
 
 async function countCapsuleMemories(
