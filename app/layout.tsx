@@ -1,8 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Dancing_Script, Inter, Merriweather } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+
+const gaId = process.env.NEXT_PUBLIC_GA_ID;
 
 const displayFont = Merriweather({
   variable: "--font-display",
@@ -54,6 +57,22 @@ export default function RootLayout({
       className={`${displayFont.variable} ${bodyFont.variable} ${handwrittenFont.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
+        {gaId ? (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+              strategy="afterInteractive"
+            />
+            <Script id="google-analytics" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){window.dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', ${JSON.stringify(gaId)});
+              `}
+            </Script>
+          </>
+        ) : null}
         {/* Shared navigation for consistent branding across pages */}
         <SiteHeader />
         <div className="flex-1">{children}</div>
