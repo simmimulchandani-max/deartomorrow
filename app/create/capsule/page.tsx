@@ -223,7 +223,7 @@ export default function CreateCapsulePage() {
                   type="date"
                   value={submissionDeadline}
                   onChange={(event) => setSubmissionDeadline(event.target.value)}
-                  className="w-full max-sm:min-w-0 rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  className="w-full max-sm:box-border max-sm:max-w-full max-sm:min-w-0 rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
                   required
                 />
               </div>
@@ -236,7 +236,7 @@ export default function CreateCapsulePage() {
                   type="date"
                   value={unlockDate}
                   onChange={(event) => setUnlockDate(event.target.value)}
-                  className="w-full max-sm:min-w-0 rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  className="w-full max-sm:box-border max-sm:max-w-full max-sm:min-w-0 rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
                   required
                 />
               </div>
