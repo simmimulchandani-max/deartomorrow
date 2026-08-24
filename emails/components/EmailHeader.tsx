@@ -9,13 +9,14 @@ export default function EmailHeader({ logoUrl }: EmailHeaderProps) {
     <Section style={{ padding: "0 0 22px", textAlign: "center" }}>
       <Img
         src={logoUrl}
-        width="132"
+        width="104"
         alt="Until Tomorrow"
         style={{
           display: "block",
           margin: "0 auto 12px",
-          maxWidth: "132px",
-          width: "132px",
+          height: "auto",
+          maxWidth: "104px",
+          width: "104px",
         }}
       />
       <Text

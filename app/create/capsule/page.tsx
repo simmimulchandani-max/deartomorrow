@@ -214,7 +214,7 @@ export default function CreateCapsulePage() {
               />
             </div>
 
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid w-full gap-5 sm:grid-cols-2">
               <div>
                 <label className="block mb-2 font-medium text-gray-700">
                   SUBMISSION DEADLINE
