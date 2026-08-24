@@ -214,8 +214,8 @@ export default function CreateCapsulePage() {
               />
             </div>
 
-            <div className="grid w-full gap-5 sm:grid-cols-2">
-              <div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div className="max-sm:min-w-0">
                 <label className="block mb-2 font-medium text-gray-700">
                   SUBMISSION DEADLINE
                 </label>
@@ -223,12 +223,12 @@ export default function CreateCapsulePage() {
                   type="date"
                   value={submissionDeadline}
                   onChange={(event) => setSubmissionDeadline(event.target.value)}
-                  className="w-full rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  className="w-full max-sm:min-w-0 rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
                   required
                 />
               </div>
 
-              <div>
+              <div className="max-sm:min-w-0">
                 <label className="block mb-2 font-medium text-gray-700">
                   UNLOCK DATE
                 </label>
@@ -236,7 +236,7 @@ export default function CreateCapsulePage() {
                   type="date"
                   value={unlockDate}
                   onChange={(event) => setUnlockDate(event.target.value)}
-                  className="w-full rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  className="w-full max-sm:min-w-0 rounded-2xl border border-gray-300 p-4 focus:outline-none focus:ring-2 focus:ring-gray-400"
                   required
                 />
               </div>

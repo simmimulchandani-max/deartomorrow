@@ -27,6 +27,7 @@ export default function CreateMemoryPage() {
   const [createdMemoryPath, setCreatedMemoryPath] = useState<string | null>(null);
   const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
   const [submissionWarning, setSubmissionWarning] = useState<string | null>(null);
+  const [isUnlockDateHelpOpen, setIsUnlockDateHelpOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -429,6 +430,12 @@ export default function CreateMemoryPage() {
                 type="button"
                 aria-label="Unlock date help"
                 aria-describedby="unlock-date-help"
+                aria-expanded={isUnlockDateHelpOpen}
+                onClick={() => {
+                  if (window.matchMedia('(max-width: 639px)').matches) {
+                    setIsUnlockDateHelpOpen((isOpen) => !isOpen);
+                  }
+                }}
                 className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#fffaf2] text-xs font-bold text-[#4a3c31] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#d79a87] focus:ring-offset-2"
               >
                 i
@@ -436,7 +443,7 @@ export default function CreateMemoryPage() {
               <span
                 id="unlock-date-help"
                 role="tooltip"
-                className="pointer-events-none absolute left-1/2 top-8 z-10 w-64 -translate-x-1/2 rounded-2xl border border-[#eadfce] bg-[#fffaf2] px-4 py-3 text-sm font-normal leading-6 text-[#5f5147] opacity-0 shadow-lg transition group-hover:opacity-100 group-focus-within:opacity-100 sm:left-0 sm:translate-x-0"
+                className={`pointer-events-none absolute left-1/2 top-8 z-10 w-64 -translate-x-1/2 rounded-2xl border border-[#eadfce] bg-[#fffaf2] px-4 py-3 text-sm font-normal leading-6 text-[#5f5147] opacity-0 shadow-lg transition group-hover:opacity-100 group-focus-within:opacity-100 sm:left-0 sm:translate-x-0 ${isUnlockDateHelpOpen ? 'max-sm:opacity-100' : ''}`}
               >
                 Choose the future date when this memory becomes available to open.
               </span>
@@ -447,7 +454,7 @@ export default function CreateMemoryPage() {
             type="date"
             value={unlockDate}
             onChange={(e) => setUnlockDate(e.target.value)}
-            className="w-full p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+            className="w-full max-sm:min-w-0 p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
           />
         </div>
 
