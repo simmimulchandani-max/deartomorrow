@@ -2,7 +2,7 @@ import { generateId } from "@/lib/generateId";
 import { requireUserFromRequest } from "@/lib/serverAuth";
 import { getStorageBucketName } from "@/lib/storageBucket";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { isSafeIdentifier, validateMediaFiles } from "@/lib/validation";
+import { isSafeIdentifier, validateMemoryMediaFiles } from "@/lib/validation";
 
 type UploadTargetsRequest = {
   id?: string;
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       size: typeof file.size === "number" ? file.size : 0,
     }));
 
-    const mediaValidationError = validateMediaFiles(normalizedFiles);
+    const mediaValidationError = validateMemoryMediaFiles(normalizedFiles);
     if (mediaValidationError) {
       return Response.json({ error: mediaValidationError }, { status: 400 });
     }

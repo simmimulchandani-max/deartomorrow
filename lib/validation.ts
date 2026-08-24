@@ -10,6 +10,9 @@ export const CONTRIBUTOR_NAME_MAX = 80;
 export const MAX_MEDIA_FILES = 8;
 export const MAX_MEDIA_FILE_BYTES = 25 * 1024 * 1024;
 export const MAX_TOTAL_MEDIA_BYTES = 100 * 1024 * 1024;
+export const MAX_MEMORY_IMAGE_BYTES = 25 * 1024 * 1024;
+export const MAX_MEMORY_VIDEO_BYTES = 200 * 1024 * 1024;
+export const MAX_MEMORY_TOTAL_MEDIA_BYTES = 200 * 1024 * 1024;
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const SAFE_IDENTIFIER_PATTERN = /^[a-zA-Z0-9_-]{8,80}$/;
@@ -43,6 +46,29 @@ export function validateTextLength(value: string, label: string, maxLength: numb
 }
 
 export function validateMediaFiles(files: NamedFileLike[]) {
+  return validateMediaFilesWithLimits(files, {
+    imageBytes: MAX_MEDIA_FILE_BYTES,
+    videoBytes: MAX_MEDIA_FILE_BYTES,
+    totalBytes: MAX_TOTAL_MEDIA_BYTES,
+  });
+}
+
+export function validateMemoryMediaFiles(files: NamedFileLike[]) {
+  const validationError = validateMediaFilesWithLimits(files, {
+    imageBytes: MAX_MEMORY_IMAGE_BYTES,
+    videoBytes: MAX_MEMORY_VIDEO_BYTES,
+    totalBytes: MAX_MEMORY_TOTAL_MEDIA_BYTES,
+  });
+
+  return validationError === "The total media limit is 200 MB."
+    ? "The total media limit for one memory is 200 MB."
+    : validationError;
+}
+
+function validateMediaFilesWithLimits(
+  files: NamedFileLike[],
+  limits: { imageBytes: number; videoBytes: number; totalBytes: number }
+) {
   if (files.length > MAX_MEDIA_FILES) {
     return `You can upload up to ${MAX_MEDIA_FILES} files.`;
   }
@@ -62,15 +88,22 @@ export function validateMediaFiles(files: NamedFileLike[]) {
       return "Empty files cannot be uploaded.";
     }
 
-    if (file.size > MAX_MEDIA_FILE_BYTES) {
-      return "Each file must be 25MB or smaller.";
+    if (normalizedType.startsWith("image/") && file.size > limits.imageBytes) {
+      const megabytes = limits.imageBytes / (1024 * 1024);
+      return `This image is too large. Please choose an image that is ${megabytes} MB or smaller.`;
+    }
+
+    if (normalizedType.startsWith("video/") && file.size > limits.videoBytes) {
+      const megabytes = limits.videoBytes / (1024 * 1024);
+      return `This video is too large. Please choose a video that is ${megabytes} MB or smaller.`;
     }
 
     totalBytes += file.size;
   }
 
-  if (totalBytes > MAX_TOTAL_MEDIA_BYTES) {
-    return "Total upload size must be 100MB or smaller.";
+  if (totalBytes > limits.totalBytes) {
+    const megabytes = limits.totalBytes / (1024 * 1024);
+    return `The total media limit is ${megabytes} MB.`;
   }
 
   return null;

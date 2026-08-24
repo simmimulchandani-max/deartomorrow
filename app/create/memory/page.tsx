@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import * as tus from 'tus-js-client';
 import { generateId } from '@/lib/generateId';
 import { buildMemoryPath } from '@/lib/memoryPaths';
 import {
@@ -9,12 +10,90 @@ import {
   MEMORY_MESSAGE_MAX,
   MEMORY_PASSWORD_MAX,
   MEMORY_TITLE_MAX,
-  validateMediaFiles,
+  validateMemoryMediaFiles,
 } from '@/lib/validation';
 
 const STORAGE_KEY = 'dear-tomorrow-memories';
 const NAV_BUTTON_CLASS =
   'px-4 py-2 rounded-full bg-[#f7c7b6] border border-[#e7b6a4] shadow text-[#4a3c31] hover:bg-[#f4bba8]';
+
+type UploadTarget = {
+  fileName: string;
+  contentType: string;
+  signedUrl: string;
+  path: string;
+  token: string;
+  publicUrl: string;
+};
+
+function isVideoFile(file: File) {
+  return file.type.trim().toLowerCase().startsWith('video/');
+}
+
+function getFileSizeLimitMessage(file: File) {
+  return isVideoFile(file)
+    ? 'This video is too large. Please choose a video that is 200 MB or smaller.'
+    : 'This image is too large. Please choose an image that is 25 MB or smaller.';
+}
+
+function getResumableUploadEndpoint() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) {
+    throw new Error('Missing Supabase URL.');
+  }
+
+  const endpoint = new URL(supabaseUrl);
+  endpoint.hostname = endpoint.hostname.replace('.supabase.co', '.storage.supabase.co');
+  endpoint.pathname = '/storage/v1/upload/resumable';
+  endpoint.search = '';
+  return endpoint.toString();
+}
+
+function getTusErrorStatus(error: unknown) {
+  if (error instanceof tus.DetailedError) {
+    return error.originalResponse?.getStatus() ?? 0;
+  }
+
+  return 0;
+}
+
+function uploadVideoWithTus(file: File, target: UploadTarget) {
+  const storageBucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'dear-tomorrow';
+
+  return new Promise<void>((resolve, reject) => {
+    const upload = new tus.Upload(file, {
+      endpoint: getResumableUploadEndpoint(),
+      retryDelays: [0, 3000, 5000, 10000, 20000],
+      headers: {
+        'x-signature': target.token,
+      },
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true,
+      chunkSize: 6 * 1024 * 1024,
+      metadata: {
+        bucketName: storageBucket,
+        objectName: target.path,
+        contentType: target.contentType,
+      },
+      onError: reject,
+      onSuccess: () => resolve(),
+    });
+
+    void upload.findPreviousUploads().then((previousUploads) => {
+      if (previousUploads.length > 0) {
+        upload.resumeFromPreviousUpload(previousUploads[0]);
+      }
+      upload.start();
+    }, reject);
+  });
+}
+
+function isStorageFileSizeError(status: number, message: string) {
+  return (
+    status === 413 ||
+    /file size|size limit|too large|payload too large/i.test(message)
+  );
+}
 
 export default function CreateMemoryPage() {
   const router = useRouter();
@@ -73,7 +152,7 @@ export default function CreateMemoryPage() {
         throw new Error(`Password must be ${MEMORY_PASSWORD_MAX} characters or less.`);
       }
 
-      const mediaValidationError = validateMediaFiles(
+      const mediaValidationError = validateMemoryMediaFiles(
         selectedFiles.map((file) => ({
           name: file.name,
           type: file.type,
@@ -86,6 +165,7 @@ export default function CreateMemoryPage() {
 
       let uploadedMediaUrls: string[] = [];
       const failedUploads: string[] = [];
+      let storageSizeLimitMessage: string | null = null;
 
       if (selectedFiles.length > 0) {
         const uploadTargetResponse = await fetch('/api/shared-memories/upload-targets', {
@@ -106,14 +186,7 @@ export default function CreateMemoryPage() {
 
         const uploadTargetPayload = (await uploadTargetResponse.json()) as {
           error?: string;
-          uploads?: Array<{
-            fileName: string;
-            contentType: string;
-            signedUrl: string;
-            path: string;
-            token: string;
-            publicUrl: string;
-          }>;
+          uploads?: UploadTarget[];
         };
 
         if (!uploadTargetResponse.ok) {
@@ -131,6 +204,26 @@ export default function CreateMemoryPage() {
         const uploadResults = await Promise.all(
           selectedFiles.map(async (file, index) => {
             const target = uploadTargets[index];
+
+            if (isVideoFile(file)) {
+              try {
+                await uploadVideoWithTus(file, target);
+                return {
+                  ok: true as const,
+                  fileName: file.name,
+                  publicUrl: target.publicUrl,
+                };
+              } catch (error) {
+                return {
+                  ok: false as const,
+                  fileName: file.name,
+                  file,
+                  status: getTusErrorStatus(error),
+                  error: error instanceof Error ? error.message : 'Upload failed',
+                };
+              }
+            }
+
             const uploadResponse = await fetch(target.signedUrl, {
               method: 'PUT',
               headers: {
@@ -144,6 +237,8 @@ export default function CreateMemoryPage() {
               return {
                 ok: false as const,
                 fileName: file.name,
+                file,
+                status: uploadResponse.status,
                 error: errorText || 'Upload failed',
               };
             }
@@ -162,9 +257,21 @@ export default function CreateMemoryPage() {
 
         failedUploads.push(
           ...uploadResults
-            .filter((result): result is { ok: false; fileName: string; error: string } => !result.ok)
+            .filter(
+              (result): result is { ok: false; fileName: string; file: File; status: number; error: string } =>
+                !result.ok
+            )
             .map((result) => result.fileName)
         );
+
+        const storageSizeLimitFailure = uploadResults.find(
+          (result) => !result.ok && isStorageFileSizeError(result.status, result.error)
+        );
+
+        if (storageSizeLimitFailure && !storageSizeLimitFailure.ok) {
+          storageSizeLimitMessage = getFileSizeLimitMessage(storageSizeLimitFailure.file);
+          alert(storageSizeLimitMessage);
+        }
       }
 
       const createResponse = await fetch('/api/shared-memories', {
@@ -255,7 +362,9 @@ export default function CreateMemoryPage() {
       if (fileInputRef.current) fileInputRef.current.value = '';
       setSelectedFileNames([]);
       setSubmissionWarning(
-        failedUploads.length > 0
+        storageSizeLimitMessage
+          ? storageSizeLimitMessage
+          : failedUploads.length > 0
           ? `Created the memory, but ${failedUploads.length} attachment${failedUploads.length === 1 ? '' : 's'} could not be uploaded.`
           : null
       );
@@ -275,6 +384,22 @@ export default function CreateMemoryPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files ? Array.from(e.target.files) : [];
+
+    const mediaValidationError = validateMemoryMediaFiles(
+      files.map((file) => ({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      }))
+    );
+
+    if (mediaValidationError) {
+      e.target.value = '';
+      setSelectedFileNames([]);
+      alert(mediaValidationError);
+      return;
+    }
+
     setSelectedFileNames(files.map((file) => file.name));
   };
 
