@@ -171,7 +171,7 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
               );
             }
 
-            return target.publicUrl as string;
+            return target.path as string;
           })
         );
 

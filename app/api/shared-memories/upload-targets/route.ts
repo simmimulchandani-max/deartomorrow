@@ -1,6 +1,6 @@
 import { generateId } from "@/lib/generateId";
 import { requireUserFromRequest } from "@/lib/serverAuth";
-import { getStorageBucketName } from "@/lib/storageBucket";
+import { getPrivateMediaBucket } from "@/lib/privateMedia";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { isSafeIdentifier, validateMemoryMediaFiles } from "@/lib/validation";
 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = getSupabaseAdminClient();
-    const storageBucket = getStorageBucketName();
+    const storageBucket = getPrivateMediaBucket();
     const uploads = await Promise.all(
       normalizedFiles.map(async (file) => {
         const fileName = file.name;
@@ -71,9 +71,13 @@ export async function POST(request: Request) {
           throw new Error(error?.message || "Failed to create an upload target.");
         }
 
-        const { data: publicUrlData } = supabase.storage
-          .from(storageBucket)
-          .getPublicUrl(storagePath);
+        if (file.type.toLowerCase().startsWith("video/")) {
+          console.info("[memory-video-upload] Created signed TUS target", {
+            hasSignedUrl: Boolean(data.signedUrl),
+            hasToken: Boolean(data.token),
+            contentType: file.type,
+          });
+        }
 
         return {
           fileName,
@@ -84,7 +88,6 @@ export async function POST(request: Request) {
           signedUrl: encodeURI(data.signedUrl),
           path: data.path,
           token: data.token,
-          publicUrl: encodeURI(publicUrlData.publicUrl),
         };
       })
     );

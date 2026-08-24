@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getStorageBucketName } from "@/lib/storageBucket";
+import { createAuthorizedMediaUrls } from "@/lib/privateMedia";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 type RawMemoryRecord = {
@@ -73,8 +73,7 @@ export async function getSharedMemoryContent(memoryId: string): Promise<SharedMe
   }
 
   const row = data as RawMemoryRecord;
-  const storageMediaUrls = await listMemoryMediaUrls(memoryId);
-  const fallbackMediaUrls =
+  const mediaReferences =
     Array.isArray(row.media_urls) && row.media_urls.every((item) => typeof item === "string")
       ? row.media_urls
       : row.media_url
@@ -90,7 +89,7 @@ export async function getSharedMemoryContent(memoryId: string): Promise<SharedMe
     createdAt: row.created_at ?? null,
     hasPassword: Boolean(row.password_hash),
     mediaUrl: row.media_url ?? null,
-    mediaUrls: storageMediaUrls.length > 0 ? storageMediaUrls : fallbackMediaUrls,
+    mediaUrls: await createAuthorizedMediaUrls(mediaReferences),
   };
 }
 
@@ -107,32 +106,4 @@ export async function getMemoryPasswordHash(memoryId: string) {
   }
 
   return data?.password_hash ?? null;
-}
-
-async function listMemoryMediaUrls(memoryId: string) {
-  const supabase = getSupabaseAdminClient();
-  const folder = `memories/${memoryId}`;
-  const storageBucket = getStorageBucketName();
-  const { data, error } = await supabase.storage.from(storageBucket).list(folder, {
-    limit: 100,
-    sortBy: {
-      column: "name",
-      order: "asc",
-    },
-  });
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data
-    .filter((item) => item.name)
-    .map((item) => {
-      const { data: publicUrlData } = supabase.storage
-        .from(storageBucket)
-        .getPublicUrl(`${folder}/${item.name}`);
-
-      return publicUrlData.publicUrl;
-    })
-    .filter(Boolean);
 }

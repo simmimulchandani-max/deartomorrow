@@ -1,6 +1,6 @@
 import { generateId } from "@/lib/generateId";
 import { getCapsuleByShareSlug } from "@/lib/capsules";
-import { getStorageBucketName } from "@/lib/storageBucket";
+import { getPrivateMediaBucket } from "@/lib/privateMedia";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { dateOnly, isSafeIdentifier, validateMediaFiles } from "@/lib/validation";
 
@@ -74,7 +74,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const supabase = getSupabaseAdminClient();
-    const storageBucket = getStorageBucketName();
+    const storageBucket = getPrivateMediaBucket();
     const uploads = await Promise.all(
       normalizedFiles.map(async (file) => {
         const fileName = file.name;
@@ -99,10 +99,6 @@ export async function POST(request: Request, context: RouteContext) {
           throw new Error(error?.message || "Failed to create an upload target.");
         }
 
-        const { data: publicUrlData } = supabase.storage
-          .from(storageBucket)
-          .getPublicUrl(storagePath);
-
         return {
           fileName,
           contentType:
@@ -112,7 +108,6 @@ export async function POST(request: Request, context: RouteContext) {
           signedUrl: encodeURI(data.signedUrl),
           path: data.path,
           token: data.token,
-          publicUrl: encodeURI(publicUrlData.publicUrl),
         };
       })
     );

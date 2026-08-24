@@ -7,7 +7,7 @@ import {
   MEMORY_MESSAGE_MAX,
   MEMORY_TITLE_MAX,
   dateOnly,
-  filterTrustedPublicUrls,
+  filterTrustedPrivateMediaPaths,
   isSafeIdentifier,
   validateTextLength,
 } from "@/lib/validation";
@@ -70,7 +70,7 @@ export async function POST(request: Request, context: RouteContext) {
     const mediaUrls = Array.isArray(body.mediaUrls)
       ? body.mediaUrls.filter((item): item is string => typeof item === "string" && item.length > 0)
       : [];
-    const trustedMediaUrls = filterTrustedPublicUrls(
+    const trustedMediaUrls = filterTrustedPrivateMediaPaths(
       mediaUrls,
       `capsules/${capsule.id}/${memoryId}/`
     );

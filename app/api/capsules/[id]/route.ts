@@ -1,6 +1,6 @@
 import { getCapsuleByShareSlug, listCapsuleMemories } from "@/lib/capsules";
 import { requireUserFromRequest } from "@/lib/serverAuth";
-import { getStorageBucketName } from "@/lib/storageBucket";
+import { removeMediaFolder } from "@/lib/privateMedia";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { dateOnly, isSafeIdentifier } from "@/lib/validation";
 
@@ -65,43 +65,13 @@ export async function DELETE(request: Request, context: RouteContext) {
     }
 
     const supabase = getSupabaseAdminClient();
-    const bucket = getStorageBucketName();
     const memories = await listCapsuleMemories(capsule.id);
-    const storagePaths = new Set<string>();
 
     for (const memory of memories) {
-      for (const mediaUrl of memory.mediaUrls) {
-        const path = extractStoragePath(mediaUrl, bucket);
-        if (path?.startsWith(`capsules/${capsule.id}/${memory.id}/`)) {
-          storagePaths.add(path);
-        }
-      }
-
       const folder = `capsules/${capsule.id}/${memory.id}`;
-      const { data: files, error: listError } = await supabase.storage
-        .from(bucket)
-        .list(folder, { limit: 1000 });
-
-      if (listError) {
-        return Response.json(
-          { error: "Failed to inspect capsule media files." },
-          { status: 500 }
-        );
-      }
-
-      for (const file of files ?? []) {
-        if (file.name) {
-          storagePaths.add(`${folder}/${file.name}`);
-        }
-      }
-    }
-
-    if (storagePaths.size > 0) {
-      const { error: removeError } = await supabase.storage
-        .from(bucket)
-        .remove(Array.from(storagePaths));
-
-      if (removeError) {
+      try {
+        await removeMediaFolder(folder, memory.mediaUrls);
+      } catch {
         return Response.json(
           { error: "Failed to delete capsule media files." },
           { status: 500 }
@@ -126,21 +96,5 @@ export async function DELETE(request: Request, context: RouteContext) {
       { error: error instanceof Error ? error.message : "Failed to delete capsule." },
       { status: 500 }
     );
-  }
-}
-
-function extractStoragePath(publicUrl: string, bucket: string) {
-  try {
-    const url = new URL(publicUrl);
-    const marker = `/storage/v1/object/public/${bucket}/`;
-    const markerIndex = url.pathname.indexOf(marker);
-
-    if (markerIndex === -1) {
-      return null;
-    }
-
-    return decodeURIComponent(url.pathname.slice(markerIndex + marker.length));
-  } catch {
-    return null;
   }
 }

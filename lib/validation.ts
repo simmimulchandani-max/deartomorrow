@@ -140,3 +140,12 @@ export function filterTrustedPublicUrls(urls: string[], prefixPath: string) {
     }
   });
 }
+
+export function filterTrustedPrivateMediaPaths(values: string[], prefixPath: string) {
+  return values.filter(
+    (value) =>
+      typeof value === "string" &&
+      !value.includes("://") &&
+      value.startsWith(prefixPath)
+  );
+}

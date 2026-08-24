@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import * as tus from 'tus-js-client';
 import { generateId } from '@/lib/generateId';
 import { buildMemoryPath } from '@/lib/memoryPaths';
+import { getPrivateMediaBucket } from '@/lib/privateMediaBucket';
 import {
   MAX_MEDIA_FILES,
   MEMORY_MESSAGE_MAX,
@@ -23,7 +24,6 @@ type UploadTarget = {
   signedUrl: string;
   path: string;
   token: string;
-  publicUrl: string;
 };
 
 function isVideoFile(file: File) {
@@ -57,10 +57,33 @@ function getTusErrorStatus(error: unknown) {
   return 0;
 }
 
+function logTusFailure(phase: string, error: unknown) {
+  const detailedError = error instanceof tus.DetailedError ? error : null;
+  const response = detailedError?.originalResponse;
+  const request = detailedError?.originalRequest;
+  let requestHost: string | null = null;
+
+  try {
+    requestHost = request ? new URL(request.getURL()).host : null;
+  } catch {
+    requestHost = null;
+  }
+
+  console.error('[memory-video-upload] TUS upload failed', {
+    phase,
+    message: error instanceof Error ? error.message : 'Unknown TUS upload error',
+    status: response?.getStatus() ?? null,
+    responseBody: response?.getBody().slice(0, 1000) ?? null,
+    requestMethod: request?.getMethod() ?? null,
+    requestHost,
+  });
+}
+
 function uploadVideoWithTus(file: File, target: UploadTarget) {
-  const storageBucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'dear-tomorrow';
+  const storageBucket = getPrivateMediaBucket();
 
   return new Promise<void>((resolve, reject) => {
+    let phase = 'create';
     const upload = new tus.Upload(file, {
       endpoint: getResumableUploadEndpoint(),
       retryDelays: [0, 3000, 5000, 10000, 20000],
@@ -75,16 +98,53 @@ function uploadVideoWithTus(file: File, target: UploadTarget) {
         objectName: target.path,
         contentType: target.contentType,
       },
-      onError: reject,
-      onSuccess: () => resolve(),
+      onBeforeRequest: (request) => {
+        phase =
+          request.getMethod() === 'POST'
+            ? 'create'
+            : request.getMethod() === 'PATCH'
+              ? 'chunk'
+              : request.getMethod() === 'HEAD'
+                ? 'resume'
+                : request.getMethod().toLowerCase();
+      },
+      onAfterResponse: (_request, response) => {
+        if (response.getStatus() >= 400) {
+          console.error('[memory-video-upload] TUS response error', {
+            phase,
+            status: response.getStatus(),
+            responseBody: response.getBody().slice(0, 1000),
+          });
+        }
+      },
+      onError: (error) => {
+        logTusFailure(phase, error);
+        reject(error);
+      },
+      onSuccess: () => {
+        console.info('[memory-video-upload] TUS upload completed', {
+          phase: 'completion',
+          bytesUploaded: file.size,
+        });
+        resolve();
+      },
     });
 
     void upload.findPreviousUploads().then((previousUploads) => {
-      if (previousUploads.length > 0) {
-        upload.resumeFromPreviousUpload(previousUploads[0]);
+      const matchingPreviousUpload = previousUploads.find(
+        (previousUpload) =>
+          previousUpload.metadata.bucketName === storageBucket &&
+          previousUpload.metadata.objectName === target.path
+      );
+
+      if (matchingPreviousUpload) {
+        upload.resumeFromPreviousUpload(matchingPreviousUpload);
       }
       upload.start();
-    }, reject);
+    }, (error) => {
+      logTusFailure('resume lookup', error);
+      reject(error);
+    });
   });
 }
 
@@ -211,7 +271,7 @@ export default function CreateMemoryPage() {
                 return {
                   ok: true as const,
                   fileName: file.name,
-                  publicUrl: target.publicUrl,
+                  path: target.path,
                 };
               } catch (error) {
                 return {
@@ -246,14 +306,14 @@ export default function CreateMemoryPage() {
             return {
               ok: true as const,
               fileName: file.name,
-              publicUrl: target.publicUrl,
+              path: target.path,
             };
           })
         );
 
         uploadedMediaUrls = uploadResults
-          .filter((result): result is { ok: true; fileName: string; publicUrl: string } => result.ok)
-          .map((result) => result.publicUrl);
+          .filter((result): result is { ok: true; fileName: string; path: string } => result.ok)
+          .map((result) => result.path);
 
         failedUploads.push(
           ...uploadResults
@@ -542,6 +602,9 @@ export default function CreateMemoryPage() {
               ))}
             </div>
           )}
+          <p className="mt-2 max-sm:max-w-[calc(100vw-4rem)] text-xs text-gray-500">
+            Up to {MAX_MEDIA_FILES} files • Images up to 25 MB each • Videos up to 200 MB • 200 MB total
+          </p>
         </div>
 
         {/* UNLOCK DATE */}
@@ -596,9 +659,6 @@ export default function CreateMemoryPage() {
             className="w-full p-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
             placeholder="Protect this shared memory with a password"
           />
-          <p className="mt-2 text-xs text-gray-500">
-            Up to {MAX_MEDIA_FILES} files, 25MB each.
-          </p>
         </div>
 
         {/* SUBMIT */}

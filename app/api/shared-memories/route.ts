@@ -7,7 +7,7 @@ import {
   MEMORY_PASSWORD_MAX,
   MEMORY_TITLE_MAX,
   dateOnly,
-  filterTrustedPublicUrls,
+  filterTrustedPrivateMediaPaths,
   isSafeIdentifier,
   isValidDateString,
   validateTextLength,
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     const mediaUrls = Array.isArray(body.mediaUrls)
       ? body.mediaUrls.filter((item): item is string => typeof item === "string" && item.length > 0)
       : [];
-    const trustedMediaUrls = filterTrustedPublicUrls(mediaUrls, `memories/${id}/`);
+    const trustedMediaUrls = filterTrustedPrivateMediaPaths(mediaUrls, `memories/${id}/`);
     const today = dateOnly(new Date());
 
     if (!title || !message || !unlockDate) {

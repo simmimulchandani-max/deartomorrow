@@ -8,6 +8,7 @@ import {
   listCapsuleMemories,
 } from "@/lib/capsules";
 import { getUserFromRequest } from "@/lib/serverAuth";
+import { createAuthorizedMediaUrls } from "@/lib/privateMedia";
 import { isSafeIdentifier } from "@/lib/validation";
 
 export async function GET(
@@ -56,22 +57,26 @@ export async function GET(
       ? await listCapsuleMemories(capsule.id)
       : [];
 
+    const serializedMemories = await Promise.all(
+      memories.map(async (memory) => ({
+        id: memory.id,
+        capsuleId: memory.capsuleId,
+        contributorName: memory.contributorName,
+        title: memory.title,
+        message: memory.message,
+        mediaUrls: await createAuthorizedMediaUrls(memory.mediaUrls ?? []),
+        createdAt: memory.createdAt,
+        href: buildCapsuleMemoryPath(capsule.shareSlug, memory.id),
+      }))
+    );
+
     return Response.json({
       capsule,
       unlocked,
       submissionCount,
       sharePath: buildCapsuleSharePath(capsule.shareSlug),
       unlockPath: buildCapsuleUnlockPath(capsule.shareSlug),
-      memories: memories.map((memory) => ({
-        id: memory.id,
-        capsuleId: memory.capsuleId,
-        contributorName: memory.contributorName,
-        title: memory.title,
-        message: memory.message,
-        mediaUrls: memory.mediaUrls ?? [],
-        createdAt: memory.createdAt,
-        href: buildCapsuleMemoryPath(capsule.shareSlug, memory.id),
-      })),
+      memories: serializedMemories,
     });
   } catch (error) {
     console.error("Get owner capsule error:", error);

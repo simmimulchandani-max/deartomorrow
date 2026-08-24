@@ -10,8 +10,7 @@ type Memory = {
   title: string;
   unlock_date: string;
   created_at: string | null;
-  media_url?: string | null;
-  media_urls?: string[] | null;
+  preview_url?: string | null;
   user_id?: string;
 };
 
@@ -55,22 +54,6 @@ function formatSavedDate(dateString: string | null) {
 
 function statusLabel(unlockDate: string) {
   return isReadyToUnlock(unlockDate) ? 'Ready to open' : `Unlocks ${formatDate(unlockDate)}`;
-}
-
-function firstImageUrl(memory: Memory) {
-  const mediaUrls = Array.isArray(memory.media_urls)
-    ? memory.media_urls.filter((url): url is string => typeof url === 'string' && url.length > 0)
-    : [];
-
-  const firstUrl = [...mediaUrls, memory.media_url]
-    .filter((url): url is string => typeof url === 'string' && url.length > 0)
-    .find(isImageUrl);
-
-  return firstUrl ?? null;
-}
-
-function isImageUrl(url: string) {
-  return /\.(avif|gif|heic|jpeg|jpg|png|webp)(?:$|[?#])/i.test(url);
 }
 
 function WaitingWaveCard({ label = 'Waiting to bloom' }: { label?: string }) {
@@ -162,7 +145,7 @@ export default function TimelinePage() {
         const [memoryResult, capsuleResult] = await Promise.all([
           supabase
             .from('memories')
-            .select('id, title, unlock_date, created_at, media_url, media_urls, user_id')
+            .select('id, title, unlock_date, created_at, user_id')
             .eq('user_id', session.user.id)
             .order('created_at', { ascending: false }),
           fetch('/api/capsules', {
@@ -176,13 +159,29 @@ export default function TimelinePage() {
           throw new Error(memoryResult.error.message);
         }
 
+        const memoryRows = (memoryResult.data as Memory[]) ?? [];
+        const previewResponse = await fetch('/api/memories/media-previews', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ids: memoryRows
+              .filter((memory) => isReadyToUnlock(memory.unlock_date))
+              .map((memory) => memory.id),
+          }),
+        });
+        const previewPayload = await previewResponse.json().catch(() => null);
+        const previews = previewResponse.ok && previewPayload?.previews ? previewPayload.previews : {};
+
         const capsulePayload = await capsuleResult.json().catch(() => null);
 
         if (!capsuleResult.ok) {
           throw new Error(capsulePayload?.error || 'Failed to load capsules.');
         }
 
-        setMemories((memoryResult.data as Memory[]) ?? []);
+        setMemories(memoryRows.map((memory) => ({ ...memory, preview_url: previews[memory.id] ?? null })));
         setCapsules(capsulePayload?.capsules ?? []);
       } catch (err) {
         console.error(err);
@@ -303,7 +302,7 @@ export default function TimelinePage() {
                   {memories.map((memory) => {
                     const locked = isLocked(memory.unlock_date);
                     const ready = !locked;
-                    const preview = ready ? firstImageUrl(memory) : null;
+                    const preview = ready ? memory.preview_url : null;
 
                     return (
                       <article key={memory.id} className="overflow-hidden rounded-2xl bg-gray-100 shadow-sm">

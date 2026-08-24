@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { requireUserFromRequest } from "@/lib/serverAuth";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { getStorageBucketName } from "@/lib/storageBucket";
+import { removeMediaFolder } from "@/lib/privateMedia";
 import { isSafeIdentifier } from "@/lib/validation";
 
 type RouteContext = {
@@ -57,43 +57,17 @@ export async function DELETE(
       );
     }
 
-    const bucket = getStorageBucketName();
     const folder = `memories/${id}`;
-
-    const { data: files, error: listError } = await supabase.storage
-      .from(bucket)
-      .list(folder, {
-        limit: 1000,
-      });
-
-    if (listError) {
-      console.error("List storage files error:", { memoryId: id, error: listError });
-    }
-
-    const listedFilePaths = (files ?? [])
-      .filter((file) => file.name)
-      .map((file) => `${folder}/${file.name}`);
     const mediaUrls = Array.isArray(memory.media_urls)
       ? memory.media_urls.filter((item): item is string => typeof item === "string")
       : [];
-    const storedUrlPaths = [...mediaUrls, memory.media_url]
-      .filter((item): item is string => typeof item === "string" && item.length > 0)
-      .map((url) => extractStoragePath(url, bucket))
-      .filter((path): path is string => path !== null && path.startsWith(`${folder}/`));
-    const filePaths = Array.from(new Set([...listedFilePaths, ...storedUrlPaths]));
-
-    if (filePaths.length > 0) {
-      const { error: removeFilesError } = await supabase.storage
-        .from(bucket)
-        .remove(filePaths);
-
-      if (removeFilesError) {
-        console.error("Remove storage files error:", {
-          memoryId: id,
-          filePaths,
-          error: removeFilesError,
-        });
-      }
+    try {
+      await removeMediaFolder(folder, [...mediaUrls, memory.media_url].filter(
+        (item): item is string => typeof item === "string" && item.length > 0
+      ));
+    } catch (error) {
+      console.error("Remove storage files error:", { memoryId: id, error });
+      return Response.json({ error: "Failed to delete memory media files." }, { status: 500 });
     }
 
     const { error: deleteError } = await supabase
@@ -122,21 +96,5 @@ export async function DELETE(
       },
       { status: 500 }
     );
-  }
-}
-
-function extractStoragePath(publicUrl: string, bucket: string) {
-  try {
-    const url = new URL(publicUrl);
-    const marker = `/storage/v1/object/public/${bucket}/`;
-    const markerIndex = url.pathname.indexOf(marker);
-
-    if (markerIndex === -1) {
-      return null;
-    }
-
-    return decodeURIComponent(url.pathname.slice(markerIndex + marker.length));
-  } catch {
-    return null;
   }
 }
