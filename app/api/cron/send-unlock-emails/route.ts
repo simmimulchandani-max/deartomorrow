@@ -57,7 +57,7 @@ type UnlockEmailDiagnostics = {
 };
 
 const MAX_RECORDS_PER_TYPE = 200;
-const DEFAULT_FROM_EMAIL = "Until Tomorrow <onboarding@resend.dev>";
+const DEFAULT_FROM_EMAIL = "Until Tomorrow <hello@until-tomorrow.com>";
 const CAPSULE_SENT_COLUMN = "capsule_unlock_email_sent_at";
 const APP_TIME_ZONE = "America/New_York";
 const LOGO_PATH = "/logo.png";
