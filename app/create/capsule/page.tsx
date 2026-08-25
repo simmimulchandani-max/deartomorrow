@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { getSupabaseClient } from '@/lib/supabaseClient';
+import { trackEvent } from '@/lib/analytics';
 import {
   CAPSULE_DESCRIPTION_MAX,
   CAPSULE_TITLE_MAX,
@@ -31,6 +32,13 @@ export default function CreateCapsulePage() {
   const [statusPath, setStatusPath] = useState('');
   const [createdCapsule, setCreatedCapsule] = useState<CreatedCapsule | null>(null);
   const [copied, setCopied] = useState(false);
+  const hasTrackedStart = useRef(false);
+
+  const trackCapsuleStarted = () => {
+    if (hasTrackedStart.current) return;
+    hasTrackedStart.current = true;
+    trackEvent('capsule_started', { creation_type: 'capsule' });
+  };
 
   const shareUrl =
     typeof window !== 'undefined' && sharePath ? `${window.location.origin}${sharePath}` : '';
@@ -74,6 +82,7 @@ export default function CreateCapsulePage() {
       }
 
       setCreatedCapsule(payload.capsule);
+      trackEvent('capsule_created', { creation_type: 'capsule' });
       setSharePath(payload.sharePath);
       setStatusPath(payload.statusPath);
       setTitle('');
@@ -187,6 +196,7 @@ export default function CreateCapsulePage() {
 
         <form
           onSubmit={handleSubmit}
+          onFocus={trackCapsuleStarted}
           className="mt-10 rounded-[1.75rem] border border-white/70 bg-gray-100 p-8 shadow-sm sm:p-10"
         >
           <div className="space-y-6">

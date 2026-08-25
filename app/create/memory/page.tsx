@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import * as tus from 'tus-js-client';
 import { generateId } from '@/lib/generateId';
 import { buildMemoryPath } from '@/lib/memoryPaths';
+import { trackEvent } from '@/lib/analytics';
 import { getPrivateMediaBucket } from '@/lib/privateMediaBucket';
 import {
   MAX_MEDIA_FILES,
@@ -168,6 +169,13 @@ export default function CreateMemoryPage() {
   const [submissionWarning, setSubmissionWarning] = useState<string | null>(null);
   const [isUnlockDateHelpOpen, setIsUnlockDateHelpOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const hasTrackedStart = useRef(false);
+
+  const trackMemoryStarted = () => {
+    if (hasTrackedStart.current) return;
+    hasTrackedStart.current = true;
+    trackEvent('memory_started', { creation_type: 'memory' });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -429,6 +437,11 @@ export default function CreateMemoryPage() {
           : null
       );
       setCreatedMemoryPath(buildMemoryPath(memoryId));
+      trackEvent('memory_created', {
+        creation_type: 'memory',
+        has_media: selectedFiles.length > 0,
+        has_password: Boolean(payload.password),
+      });
       setSubmitted(true);
     } catch (error) {
       console.error('Create memory error:', error);
@@ -497,6 +510,7 @@ export default function CreateMemoryPage() {
               onClick={() => {
                 setSubmitted(false);
                 setCreatedMemoryPath(null);
+                hasTrackedStart.current = false;
                 router.push('/create/memory');
               }}
               className={NAV_BUTTON_CLASS}
@@ -545,7 +559,7 @@ export default function CreateMemoryPage() {
 
     {/* Form Card */}
     <div className="w-full max-w-2xl bg-gray-100 rounded-3xl p-8 sm:p-10 space-y-6 shadow-md">
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} onFocus={trackMemoryStarted} className="space-y-6">
 
         {/* TITLE */}
         <div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { generateId } from '@/lib/generateId';
+import { trackEvent } from '@/lib/analytics';
 import {
   CONTRIBUTOR_NAME_MAX,
   MEMORY_MESSAGE_MAX,
@@ -210,6 +211,10 @@ export default function CapsuleContributionPage({ params }: CapsulePageProps) {
 
       if (fileInputRef.current) fileInputRef.current.value = '';
 
+      trackEvent('capsule_contribution_submitted', {
+        creation_type: 'capsule',
+        has_media: selectedFiles.length > 0,
+      });
       setSubmitted(true);
     } catch (error) {
       console.error('Capsule contribution submit error:', error);
