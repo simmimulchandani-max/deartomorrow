@@ -27,6 +27,7 @@ type OwnerPayload = {
   submissionCount: number;
   sharePath: string;
   unlockPath: string;
+  viewerIsOwner: boolean;
   memories: CapsuleMemory[];
 };
 
@@ -69,7 +70,7 @@ export default function CapsuleOwnerView({
         } = await supabase.auth.getSession();
 
         if (!session) {
-          throw new Error('Please log in as the capsule owner.');
+          throw new Error('Please log in to open this capsule.');
         }
 
         const response = await fetch(`/api/capsules/${shareSlug}/owner`, {
@@ -193,13 +194,15 @@ export default function CapsuleOwnerView({
             ) : null}
           </div>
 
-          <button
-            type="button"
-            onClick={copyShareLink}
-            className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-6 text-sm font-semibold tracking-[0.12em] text-[#4a3c31] shadow transition hover:bg-[#f4bba8]"
-          >
-            {copied ? 'Link Copied' : 'Copy Share Link'}
-          </button>
+          {payload.viewerIsOwner ? (
+            <button
+              type="button"
+              onClick={copyShareLink}
+              className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-6 text-sm font-semibold tracking-[0.12em] text-[#4a3c31] shadow transition hover:bg-[#f4bba8]"
+            >
+              {copied ? 'Link Copied' : 'Copy Share Link'}
+            </button>
+          ) : null}
         </div>
 
         {errorMessage ? (
@@ -313,18 +316,20 @@ export default function CapsuleOwnerView({
           </div>
         )}
 
-        <div className="mt-12 border-t border-[#d8cfc2] pt-6">
-          <button
-            type="button"
-            onClick={() => setShowDeleteModal(true)}
-            className="inline-flex min-h-10 items-center justify-center rounded-full bg-white px-4 text-sm font-semibold text-red-600 transition hover:bg-red-50"
-          >
-            Delete Capsule
-          </button>
-        </div>
+        {payload.viewerIsOwner ? (
+          <div className="mt-12 border-t border-[#d8cfc2] pt-6">
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              className="inline-flex min-h-10 items-center justify-center rounded-full bg-white px-4 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+            >
+              Delete Capsule
+            </button>
+          </div>
+        ) : null}
       </section>
 
-      {showDeleteModal ? (
+      {payload.viewerIsOwner && showDeleteModal ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
           role="dialog"

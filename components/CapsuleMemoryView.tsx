@@ -13,6 +13,14 @@ type CapsuleMemory = {
   createdAt: string | null;
 };
 
+type CapsuleOwnerPayload = {
+  error?: string;
+  unlocked: boolean;
+  viewerIsOwner: boolean;
+  capsule: { unlockDate: string };
+  memories: CapsuleMemory[];
+};
+
 function formatDate(dateString: string | null) {
   if (!dateString) return 'Just now';
 
@@ -42,6 +50,7 @@ export default function CapsuleMemoryView({
 
   const [memory, setMemory] = useState<CapsuleMemory | null>(null);
   const [unlockDate, setUnlockDate] = useState('');
+  const [viewerIsOwner, setViewerIsOwner] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -55,7 +64,7 @@ export default function CapsuleMemoryView({
         } = await supabase.auth.getSession();
 
         if (!session) {
-          throw new Error('Please log in as the capsule owner.');
+          throw new Error('Please log in to open this capsule.');
         }
 
         const response = await fetch(`/api/capsules/${shareSlug}/owner`, {
@@ -64,7 +73,7 @@ export default function CapsuleMemoryView({
           },
         });
 
-        const payload = await response.json();
+        const payload = (await response.json()) as CapsuleOwnerPayload;
 
         if (!response.ok) {
           throw new Error(payload?.error || 'Failed to load capsule memory.');
@@ -85,6 +94,7 @@ export default function CapsuleMemoryView({
         if (isActive) {
           setMemory(foundMemory);
           setUnlockDate(payload.capsule.unlockDate);
+          setViewerIsOwner(payload.viewerIsOwner);
         }
       } catch (error) {
         if (isActive) {
@@ -165,8 +175,8 @@ export default function CapsuleMemoryView({
       createdAtLabel={formatDate(memory.createdAt)}
       mediaUrls={memory.mediaUrls}
       sharePath={`/capsule/${shareSlug}/memory/${memory.id}`}
-      showDeleteButton
-      onDelete={handleDelete}
+      showDeleteButton={viewerIsOwner}
+      onDelete={viewerIsOwner ? handleDelete : undefined}
     />
   );
 }
