@@ -216,12 +216,12 @@ export default function Home() {
             >
               Some moments deserve to be felt twice.
             </h1>
-            <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-[#66584e] sm:text-lg sm:leading-8 lg:mx-0">
+            <p className="mx-auto mt-[1.1rem] max-w-xl text-base leading-7 text-[#66584e] sm:mt-5 sm:text-lg sm:leading-8 lg:mx-0">
               Save today&apos;s photos, videos, and messages. Unlock them on a
               future date and relive the moments that matter.
             </p>
 
-            <div id="hero-sign-in" className="mx-auto mt-6 w-full max-w-md scroll-mt-28 lg:mx-0">
+            <div id="hero-sign-in" className="mx-auto mt-[1.3rem] w-full max-w-md scroll-mt-28 sm:mt-6 lg:mx-0">
               {isCheckingSession ? (
                 <div
                   className="rounded-2xl border border-[#eadfce] bg-white px-5 py-5 text-center text-sm text-[#66584e] shadow-sm"
@@ -264,7 +264,7 @@ export default function Home() {
                       disabled={isSubmitting}
                       className="cta-button min-w-0 px-2 text-[0.72rem] tracking-normal disabled:cursor-not-allowed disabled:opacity-65 min-[375px]:text-xs sm:px-3 sm:text-sm"
                     >
-                      {submittingType === "memory" ? "Sending…" : <>Create a Memory <span aria-hidden="true">→</span></>}
+                      {submittingType === "memory" ? "Sending…" : <><span className="sm:hidden">Memory&nbsp;→</span><span className="hidden sm:inline">Create a Memory&nbsp;→</span></>}
                     </button>
                     <button
                       type="submit"
@@ -273,7 +273,7 @@ export default function Home() {
                       disabled={isSubmitting}
                       className="cta-button-secondary min-w-0 px-2 text-[0.72rem] tracking-normal disabled:cursor-not-allowed disabled:opacity-65 min-[375px]:text-xs sm:px-3 sm:text-sm"
                     >
-                      {submittingType === "capsule" ? "Sending…" : <>Create a Capsule <span aria-hidden="true">→</span></>}
+                      {submittingType === "capsule" ? "Sending…" : <><span className="sm:hidden">Capsule&nbsp;→</span><span className="hidden sm:inline">Create a Capsule&nbsp;→</span></>}
                     </button>
                   </div>
                   <p id="sign-in-note" className="mt-2.5 text-center text-xs leading-5 text-[#75675d]">
@@ -381,7 +381,7 @@ function CreationLinks({ location }: { location: string }) {
         }
         className="cta-button min-w-0 px-2 text-[0.72rem] tracking-normal min-[375px]:text-xs sm:px-3 sm:text-sm"
       >
-        Create a Memory <span aria-hidden="true">→</span>
+        <span className="sm:hidden">Memory&nbsp;→</span><span className="hidden sm:inline">Create a Memory&nbsp;→</span>
       </Link>
       <Link
         href="/create/capsule"
@@ -393,7 +393,7 @@ function CreationLinks({ location }: { location: string }) {
         }
         className="cta-button-secondary min-w-0 px-2 text-[0.72rem] tracking-normal min-[375px]:text-xs sm:px-3 sm:text-sm"
       >
-        Create a Capsule <span aria-hidden="true">→</span>
+        <span className="sm:hidden">Capsule&nbsp;→</span><span className="hidden sm:inline">Create a Capsule&nbsp;→</span>
       </Link>
     </div>
   );
