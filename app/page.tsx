@@ -1,8 +1,17 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Playfair_Display } from "next/font/google";
+import Image from "next/image";
 import Link from "next/link";
+import { Playfair_Display } from "next/font/google";
+import {
+  FormEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { trackEvent } from "@/lib/analytics";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 
 const brandFont = Playfair_Display({
@@ -10,80 +19,167 @@ const brandFont = Playfair_Display({
   weight: ["600", "700"],
 });
 
-const useCases = [
-  ["Birthdays", "Save a note, photo, or wish to open later."],
-  ["Trips", "Capture the little details you never want to forget."],
-  ["Weddings", "Collect love notes for the couple to open later."],
-  ["Future self", "Write something future-you will need to hear."],
-];
+function StepIcon({ children }: { children: ReactNode }) {
+  return (
+    <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#f7c7b6] text-[#4a3c31] sm:h-11 sm:w-11">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+        className="h-5 w-5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {children}
+      </svg>
+    </span>
+  );
+}
 
 const steps = [
-  ["1", "Create it", "Write a note, add photos or videos, and choose a future unlock date."],
-  ["2", "Lock it", "Your memory stays tucked away until the date you picked."],
-  ["3", "Feel it again", "When it unlocks, come back to relive the moment."],
+  {
+    title: "Create It",
+    copy: "Save photos, videos, or messages.",
+    icon: (
+      <StepIcon>
+        <path d="M4 6.5h16v12H4zM7.5 14l2.5-2.5 2.5 2 2.5-3 3.5 4.5M9 9.5h.01" />
+      </StepIcon>
+    ),
+  },
+  {
+    title: "Lock It",
+    copy: "Pick a future date.",
+    icon: (
+      <StepIcon>
+        <path d="M7 10V8a5 5 0 0 1 10 0v2m-11 0h12v10H6z" />
+      </StepIcon>
+    ),
+  },
+  {
+    title: "Feel It Again",
+    copy: "Relive the moment when it’s time.",
+    icon: (
+      <StepIcon>
+        <path d="M20.8 8.6c0 5.2-8.8 10.1-8.8 10.1S3.2 13.8 3.2 8.6A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 8.8 1.2Z" />
+      </StepIcon>
+    ),
+  },
+];
+
+const polaroids = [
+  {
+    src: "/images/homepage/dog walk.png",
+    alt: "A golden retriever on a sunny neighborhood walk",
+    rotation: "-rotate-[3deg]",
+    position: "object-center",
+  },
+  {
+    src: "/images/homepage/nyc.png",
+    alt: "The New York City skyline beneath a vivid sunset",
+    rotation: "rotate-[2deg]",
+    position: "object-center",
+  },
+  {
+    src: "/images/homepage/1.jpg",
+    alt: "A father sharing a family meal with two children",
+    rotation: "-rotate-[1deg]",
+    position: "object-[center_48%]",
+  },
+  {
+    src: "/images/homepage/2.png",
+    alt: "A quiet sunset moment on the beach",
+    rotation: "rotate-[3deg]",
+    position: "object-[center_58%]",
+  },
+  {
+    src: "/images/homepage/3.jpg",
+    alt: "Friends celebrating together in colorful traditional clothing",
+    rotation: "-rotate-[2deg]",
+    position: "object-[center_48%]",
+  },
+  {
+    src: "/images/homepage/4.png",
+    alt: "Friends laughing together over a sunlit meal",
+    rotation: "rotate-[1deg]",
+    position: "object-center",
+  },
 ];
 
 export default function Home() {
   const supabase = useMemo(() => getSupabaseClient(), []);
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSentLink, setHasSentLink] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [hasSession, setHasSession] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [submittingType, setSubmittingType] = useState<
+    "memory" | "capsule" | null
+  >(null);
 
   useEffect(() => {
-    let isActive = true;
+    let active = true;
 
-    async function loadSession() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!isActive) return;
-
-      setHasSession(Boolean(session));
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      setHasSession(Boolean(data.session));
       setIsCheckingSession(false);
-    }
+    });
 
-    void loadSession();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
+    const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        if (!isActive) return;
-
+        if (!active) return;
         setHasSession(Boolean(session));
         setIsCheckingSession(false);
       }
     );
 
     return () => {
-      isActive = false;
-      authListener.subscription.unsubscribe();
+      active = false;
+      listener.subscription.unsubscribe();
     };
   }, [supabase]);
 
   async function handleMagicLinkLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const submitter = (event.nativeEvent as SubmitEvent)
+      .submitter as HTMLButtonElement | null;
+    const creationType =
+      submitter?.value === "capsule" ? "capsule" : "memory";
+    const destination =
+      creationType === "capsule" ? "/create/capsule" : "/create/memory";
 
     if (!email.trim()) {
       setErrorMessage("Please enter your email address.");
+      emailInputRef.current?.focus();
       return;
     }
 
+    trackEvent("homepage_create_memory_clicked", {
+      cta_location: "homepage_hero",
+      creation_type: creationType,
+    });
+    trackEvent("login_started", {
+      login_method: "magic_link",
+      source: "homepage_hero",
+      creation_type: creationType,
+    });
     setIsSubmitting(true);
+    setSubmittingType(creationType);
     setErrorMessage("");
 
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(destination)}`,
         },
       });
 
       if (error) throw error;
-
       setHasSentLink(true);
     } catch (error) {
       setErrorMessage(
@@ -93,227 +189,239 @@ export default function Home() {
       );
     } finally {
       setIsSubmitting(false);
+      setSubmittingType(null);
     }
   }
 
+  function focusSignIn() {
+    document.getElementById("hero-sign-in")?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+      block: "center",
+    });
+    window.setTimeout(() => emailInputRef.current?.focus(), 250);
+  }
+
   return (
-    <main className="relative min-h-[calc(100vh-9rem)] overflow-hidden bg-[linear-gradient(180deg,_#fff8e5_0%,_#f1e3c6_42%,_#d6ebf5_100%)] px-6 py-12 text-[#4a3c31] sm:py-16">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-1/2 top-[-18rem] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-[#f7c7b6]/35 blur-3xl" />
-        <div className="absolute bottom-[-18%] left-1/2 h-80 w-[140%] -translate-x-1/2 rounded-[100%] bg-[radial-gradient(ellipse_at_center,_rgba(245,233,210,0.95)_0%,_rgba(236,221,194,0.88)_42%,_rgba(233,216,188,0)_75%)]" />
-        <div className="absolute bottom-[12%] left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent" />
-      </div>
+    <main className="overflow-hidden bg-[#fffaf0] text-[#4a3c31]">
+      <section className="px-4 pb-10 pt-7 sm:px-6 sm:pb-12 sm:pt-10 lg:pb-14 lg:pt-12">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)] items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(390px,0.86fr)] lg:gap-12">
+          <div className="min-w-0 text-center lg:text-left">
+            <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#8a786d]">
+              A memory, waiting for you
+            </p>
+            <h1
+              className={`${brandFont.className} mx-auto mt-3 max-w-2xl text-[2.55rem] leading-[1.04] tracking-[-0.025em] sm:text-5xl md:text-6xl lg:mx-0 lg:text-[4.4rem]`}
+            >
+              Some moments deserve to be felt twice.
+            </h1>
+            <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-[#66584e] sm:text-lg sm:leading-8 lg:mx-0">
+              Save today&apos;s photos, videos, and messages. Unlock them on a
+              future date and relive the moments that matter.
+            </p>
 
-      <section className="relative mx-auto w-full max-w-7xl">
-        <div className="rounded-[2.25rem] border border-white/60 bg-white/55 px-6 py-8 shadow-[0_30px_120px_rgba(88,110,124,0.16)] backdrop-blur-md sm:px-10 sm:py-10 lg:px-12">
-          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)]">
-            <div className="text-center lg:text-left">
-              <p className="text-xs font-bold uppercase tracking-[0.34em] text-[#8a786d]">
-                Until Tomorrow
-              </p>
-
-              <h1
-                className={`${brandFont.className} mt-4 text-5xl leading-[0.98] text-[#4a3c31] sm:text-6xl md:text-7xl`}
-                style={{
-                  letterSpacing: "0.01em",
-                  textShadow:
-                    "0 2px 4px rgba(255,248,229,0.7), 0 6px 18px rgba(74,60,49,0.16)",
-                }}
-              >
-                Some moments deserve to be felt twice.
-              </h1>
-
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-[#5f5147] sm:text-xl lg:mx-0">
-                Create a memory today, lock it until a future date, and reopen it
-                when the moment is ready to be remembered.
-              </p>
-
-              <p className="mt-4 max-w-2xl text-sm leading-7 tracking-[0.02em] text-[#6f6259] sm:text-base lg:mx-0">
-                Save birthday notes, trip reflections, wedding wishes, milestone
-                snapshots, or a message to your future self.
-              </p>
-
-              <div className="mt-8 grid gap-3 text-left sm:grid-cols-3">
-                {steps.map(([step, title, copy]) => (
-                  <div
-                    key={step}
-                    className="rounded-2xl border border-white/70 bg-white/55 p-4 shadow-sm"
-                  >
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#f7c7b6] text-sm font-bold text-[#4a3c31]">
-                      {step}
-                    </span>
-                    <h2 className="mt-3 text-sm font-bold uppercase tracking-[0.14em] text-[#4a3c31]">
-                      {title}
-                    </h2>
-                    <p className="mt-2 text-sm leading-6 text-[#6f6259]">
-                      {copy}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-8 w-full max-w-md lg:max-w-lg">
-                {isCheckingSession ? (
-                  <div className="rounded-[1.75rem] border border-white/70 bg-white/60 px-6 py-6 text-center shadow-inner">
-                    <p className="text-base leading-8 text-[#5f5147] sm:text-lg">
-                      Checking your session...
-                    </p>
-                  </div>
-                ) : hasSession ? (
-                  <div className="rounded-[1.75rem] border border-white/70 bg-white/60 px-5 py-5 shadow-inner">
-                    <Link
-                      href="/create"
-                      className="inline-flex min-h-14 w-full items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-7 text-sm font-bold uppercase tracking-[0.18em] text-[#4a3c31] shadow-[0_16px_34px_rgba(74,60,49,0.12)] transition duration-300 hover:-translate-y-0.5 hover:bg-[#f4bba8]"
-                    >
-                      Create a Memory
-                    </Link>
-                  </div>
-                ) : hasSentLink ? (
-                  <div className="rounded-[1.75rem] border border-white/70 bg-white/60 px-6 py-6 text-center shadow-inner">
-                    <p className="text-base leading-8 text-[#5f5147] sm:text-lg">
-                      Check your email — your link is on the way!
-                    </p>
-                  </div>
-                ) : (
-                  <form
-                    onSubmit={handleMagicLinkLogin}
-                    className="rounded-[1.75rem] border border-white/70 bg-white/60 px-5 py-5 shadow-inner"
-                  >
-                    <label
-                      htmlFor="email"
-                      className="block text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#4a3c31]"
-                    >
-                      Email Address
-                    </label>
-                    <input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      placeholder="you@example.com"
-                      autoComplete="email"
-                      className="mt-3 min-h-14 w-full rounded-full border border-white/80 bg-white/90 px-5 text-base text-[#4a3c31] outline-none transition placeholder:text-[#8a786d] focus:border-[#f0b79f] focus:ring-2 focus:ring-[#f0b79f]/50"
-                    />
+            <div id="hero-sign-in" className="mx-auto mt-6 w-full max-w-md scroll-mt-28 lg:mx-0">
+              {isCheckingSession ? (
+                <div
+                  className="rounded-2xl border border-[#eadfce] bg-white px-5 py-5 text-center text-sm text-[#66584e] shadow-sm"
+                  role="status"
+                >
+                  Checking your session…
+                </div>
+              ) : hasSession ? (
+                <CreationLinks location="homepage_hero_authenticated" />
+              ) : hasSentLink ? (
+                <div
+                  className="rounded-2xl border border-[#eadfce] bg-white px-5 py-5 text-center shadow-sm"
+                  role="status"
+                >
+                  <p className="font-semibold">Check your email — your secure link is on the way.</p>
+                  <p className="mt-1 text-sm text-[#6f6259]">You can safely close this page.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleMagicLinkLogin}>
+                  <label htmlFor="homepage-email" className="sr-only">
+                    Email address
+                  </label>
+                  <input
+                    ref={emailInputRef}
+                    id="homepage-email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="Your email address"
+                    autoComplete="email"
+                    aria-describedby="sign-in-note"
+                    className="min-h-12 w-full rounded-full border border-[#d9cdbd] bg-white px-5 text-base text-[#4a3c31] shadow-sm outline-none placeholder:text-[#938278] focus:border-[#e7b6a4] focus:ring-2 focus:ring-[#e7b6a4]/45"
+                  />
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3">
                     <button
                       type="submit"
+                      name="creationType"
+                      value="memory"
                       disabled={isSubmitting}
-                      className="mt-4 inline-flex min-h-14 w-full items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] px-7 text-sm font-bold uppercase tracking-[0.18em] text-[#4a3c31] shadow-[0_16px_34px_rgba(74,60,49,0.12)] transition duration-300 hover:-translate-y-0.5 hover:bg-[#f4bba8] disabled:cursor-not-allowed disabled:opacity-70"
+                      className="cta-button min-w-0 px-2 text-[0.72rem] tracking-normal disabled:cursor-not-allowed disabled:opacity-65 min-[375px]:text-xs sm:px-3 sm:text-sm"
                     >
-                      {isSubmitting ? "Sending Link..." : "Log In / Sign Up"}
+                      {submittingType === "memory" ? "Sending…" : <>Create a Memory <span aria-hidden="true">→</span></>}
                     </button>
-                    {errorMessage ? (
-                      <p className="mt-4 text-sm leading-7 text-[#9b4d3a]">
-                        {errorMessage}
-                      </p>
-                    ) : null}
-                  </form>
-                )}
-              </div>
-
-            </div>
-
-            <aside aria-label="Example unlocked memory" className="mx-auto w-full max-w-md">
-              <div className="rotate-[-1.5deg] rounded-[1.75rem] border border-[#eadfce] bg-[#fffaf2] p-4 shadow-[0_24px_80px_rgba(74,60,49,0.18)] transition duration-500 hover:rotate-0 hover:scale-[1.01]">
-                <div className="overflow-hidden rounded-[1.25rem] bg-[linear-gradient(145deg,_#f7c7b6_0%,_#fff2d8_52%,_#d6ebf5_100%)] p-4">
-                  <div className="relative flex min-h-56 items-end overflow-hidden rounded-[1rem] border border-white/60 bg-[radial-gradient(circle_at_18%_20%,_#fff7d7_0%,_transparent_24%),linear-gradient(145deg,_#f4ad8d_0%,_#f7d9a6_42%,_#8fc6d8_100%)] p-5">
-                    <div className="absolute inset-0 bg-[linear-gradient(180deg,_transparent_0%,_rgba(74,60,49,0.20)_100%)]" />
-                    <div className="absolute left-8 top-8 h-16 w-16 rounded-full bg-[#fff4bd]/80 blur-sm" />
-                    <div className="absolute bottom-0 left-0 right-0 h-24 rounded-t-[100%] bg-[#f7ead1]/70" />
-                    <div className="relative rounded-full border border-white/70 bg-white/60 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-[#5f5147] backdrop-blur">
-                      Beach sunset memory
-                    </div>
+                    <button
+                      type="submit"
+                      name="creationType"
+                      value="capsule"
+                      disabled={isSubmitting}
+                      className="cta-button-secondary min-w-0 px-2 text-[0.72rem] tracking-normal disabled:cursor-not-allowed disabled:opacity-65 min-[375px]:text-xs sm:px-3 sm:text-sm"
+                    >
+                      {submittingType === "capsule" ? "Sending…" : <>Create a Capsule <span aria-hidden="true">→</span></>}
+                    </button>
                   </div>
-                </div>
-
-                <div className="px-3 pb-3 pt-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="rounded-full bg-[#f7c7b6]/70 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-[#4a3c31]">
-                      Unlocked
-                    </p>
-                    <p className="rounded-full border border-[#d7e6ee] bg-[#edf8fb] px-3 py-1 text-xs font-semibold text-[#4a6270]">
-                      July 18, 2026
-                    </p>
-                  </div>
-
-                  <h2 className={`${brandFont.className} mt-4 text-3xl leading-tight text-[#4a3c31]`}>
-                    Summer in Montauk
-                  </h2>
-
-                  <p className="mt-3 text-sm leading-7 text-[#62544a]">
-                    I hope this brings you right back to the sound of the waves,
-                    the late-night laughs, and the feeling that life was exactly
-                    where it needed to be.
+                  <p id="sign-in-note" className="mt-2.5 text-center text-xs leading-5 text-[#75675d]">
+                    We&apos;ll email you a secure sign-in link. No password needed.
                   </p>
-                </div>
-              </div>
-            </aside>
+                  {errorMessage ? (
+                    <p className="mt-2 text-center text-sm text-[#9b4d3a]" role="alert">
+                      {errorMessage}
+                    </p>
+                  ) : null}
+                </form>
+              )}
+            </div>
+          </div>
+
+          <div className="mx-auto min-w-0 w-full max-w-md lg:max-w-none">
+            <PolaroidCollage />
           </div>
         </div>
+      </section>
 
-        <section className="mt-8 grid gap-4 lg:grid-cols-2">
-          <div className="rounded-[2rem] border border-white/65 bg-white/50 p-6 shadow-[0_20px_70px_rgba(88,110,124,0.10)] backdrop-blur">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#8a786d]">
-              Memory
-            </p>
-            <h2 className={`${brandFont.className} mt-3 text-3xl text-[#4a3c31]`}>
-              A private time capsule for your future self.
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-[#6f6259]">
-              Save a note, photo, video, or feeling that only you can open when
-              the time is right.
-            </p>
-          </div>
-
-          <div className="rounded-[2rem] border border-white/65 bg-white/50 p-6 shadow-[0_20px_70px_rgba(88,110,124,0.10)] backdrop-blur">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#8a786d]">
-              Capsule
-            </p>
-            <h2 className={`${brandFont.className} mt-3 text-3xl text-[#4a3c31]`}>
-              A shared collection of memories from people you love.
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-[#6f6259]">
-              Invite friends or family to contribute messages for birthdays,
-              weddings, trips, and once-in-a-lifetime moments.
-            </p>
-          </div>
-        </section>
-
-        <section className="mt-8 rounded-[2rem] border border-white/65 bg-white/45 p-6 shadow-[0_20px_70px_rgba(88,110,124,0.10)] backdrop-blur sm:p-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#8a786d]">
-              Made for the moments you’ll want to revisit
-            </p>
-            <h2 className={`${brandFont.className} mt-3 text-4xl leading-tight text-[#4a3c31] sm:text-5xl`}>
-              Turn today into something beautiful to open later.
-            </h2>
-          </div>
-
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {useCases.map(([title, copy]) => (
-              <div
-                key={title}
-                className="rounded-3xl border border-white/70 bg-white/55 p-5 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:bg-white/70"
-              >
-                <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-[#4a3c31]">
-                  {title}
+      <section id="how-it-works" aria-labelledby="how-title" className="border-y border-[#eadfce] bg-white/65 px-4 py-10 sm:px-6 sm:py-12">
+        <div className="mx-auto max-w-5xl">
+          <h2 id="how-title" className={`${brandFont.className} text-center text-3xl sm:text-4xl`}>
+            How It Works
+          </h2>
+          <div className="mt-7 grid grid-cols-3 gap-3 sm:gap-8">
+            {steps.map((step) => (
+              <article key={step.title} className="min-w-0 text-center">
+                {step.icon}
+                <h3 className="mt-3 text-xs font-bold uppercase leading-4 tracking-[0.08em] sm:text-base sm:tracking-[0.12em]">
+                  {step.title}
                 </h3>
-                <p className="mt-3 text-sm leading-7 text-[#6f6259]">
-                  {copy}
+                <p className="mx-auto mt-1.5 max-w-48 text-[0.7rem] leading-4 text-[#6f6259] sm:mt-2 sm:text-sm sm:leading-6">
+                  {step.copy}
                 </p>
-              </div>
+              </article>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="mx-auto mt-7 max-w-2xl text-center text-[#7d6f65]">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em]">
-            Private by default 🔒
+      <section className="border-b border-[#eadfce] bg-[#fffaf0] px-4 py-9 text-center sm:px-6 sm:py-11">
+        <div className="mx-auto max-w-2xl">
+          <p className="text-[0.68rem] font-bold uppercase tracking-[0.24em] text-[#8a786d]">
+            Memories are better together
           </p>
-          <p className="mt-2 text-sm leading-6">
-            You control the unlock date and who can access your memories.
+          <h2 className={`${brandFont.className} mt-2 text-3xl leading-tight sm:text-4xl`}>
+            Some memories are meant to be shared.
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-[#66584e] sm:text-base sm:leading-7">
+            Create a group time capsule for birthdays, weddings, or just because.
+            Invite friends and family to add photos, videos, and messages, then
+            open the collection on a future date.
           </p>
-        </section>
+          {hasSession ? (
+            <Link
+              href="/create/capsule"
+              onClick={() =>
+                trackEvent("homepage_create_memory_clicked", {
+                  cta_location: "homepage_group_capsule",
+                  creation_type: "capsule",
+                })
+              }
+              className="mt-4 inline-flex min-h-11 items-center text-sm font-bold text-[#7d5142] underline decoration-[#e7b6a4] decoration-2 underline-offset-4 hover:text-[#4a3c31] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e7b6a4]"
+            >
+              Create a Group Capsule <span aria-hidden="true">→</span>
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={focusSignIn}
+              className="mt-4 min-h-11 text-sm font-bold text-[#7d5142] underline decoration-[#e7b6a4] decoration-2 underline-offset-4 hover:text-[#4a3c31] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e7b6a4]"
+            >
+              Create a Group Capsule <span aria-hidden="true">→</span>
+            </button>
+          )}
+        </div>
+      </section>
+
+      <section className="bg-[#f4e8d5] px-4 py-10 text-center sm:px-6 sm:py-12">
+        <div className="mx-auto max-w-2xl">
+          <h2 className={`${brandFont.className} text-3xl leading-tight sm:text-5xl`}>
+            Don&apos;t let the moment just live in your camera roll.
+          </h2>
+          <button type="button" onClick={focusSignIn} className="cta-button mx-auto mt-6 max-w-sm">
+            Create Your First Memory <span aria-hidden="true">→</span>
+          </button>
+        </div>
       </section>
     </main>
+  );
+}
+
+function CreationLinks({ location }: { location: string }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+      <Link
+        href="/create/memory"
+        onClick={() =>
+          trackEvent("homepage_create_memory_clicked", {
+            cta_location: location,
+            creation_type: "memory",
+          })
+        }
+        className="cta-button min-w-0 px-2 text-[0.72rem] tracking-normal min-[375px]:text-xs sm:px-3 sm:text-sm"
+      >
+        Create a Memory <span aria-hidden="true">→</span>
+      </Link>
+      <Link
+        href="/create/capsule"
+        onClick={() =>
+          trackEvent("homepage_create_memory_clicked", {
+            cta_location: location,
+            creation_type: "capsule",
+          })
+        }
+        className="cta-button-secondary min-w-0 px-2 text-[0.72rem] tracking-normal min-[375px]:text-xs sm:px-3 sm:text-sm"
+      >
+        Create a Capsule <span aria-hidden="true">→</span>
+      </Link>
+    </div>
+  );
+}
+
+function PolaroidCollage() {
+  return (
+    <div
+      className="grid grid-cols-3 items-center gap-x-2 gap-y-3 px-1 py-1 sm:gap-x-3 sm:gap-y-4 lg:px-2"
+      aria-label="A collection of six cherished moments"
+    >
+      {polaroids.map((photo, index) => (
+        <figure
+          key={photo.src}
+          className={`min-w-0 bg-[#fffdf7] p-1.5 pb-3 shadow-[0_7px_18px_rgba(74,60,49,0.13)] sm:p-2 sm:pb-4 ${photo.rotation}`}
+        >
+          <div className="relative aspect-[4/3] overflow-hidden bg-[#eadfce]">
+            <Image
+              src={photo.src}
+              alt={photo.alt}
+              fill
+              preload={index === 1}
+              sizes="(max-width: 639px) 29vw, (max-width: 1023px) 140px, 150px"
+              className={`object-cover ${photo.position}`}
+            />
+          </div>
+        </figure>
+      ))}
+    </div>
   );
 }

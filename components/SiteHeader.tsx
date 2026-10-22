@@ -6,6 +6,7 @@ import type { User } from "@supabase/supabase-js";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import { trackEvent } from "@/lib/analytics";
 
 const FEEDBACK_RATINGS = ["🙂", "😐", "😡"] as const;
 
@@ -43,6 +44,7 @@ export default function SiteHeader() {
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const hasTrackedLoginRef = useRef(false);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -97,10 +99,14 @@ export default function SiteHeader() {
     void loadUser();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         if (isActive) {
           setUser(session?.user ?? null);
           setIsUserMenuOpen(false);
+          if (event === "SIGNED_IN" && session?.user && !hasTrackedLoginRef.current) {
+            hasTrackedLoginRef.current = true;
+            trackEvent("login_completed", { login_method: "magic_link" });
+          }
         }
       }
     );
@@ -245,24 +251,47 @@ export default function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#eadfce] bg-[#F5F0E6]/95 backdrop-blur-sm">
-      <div className="mx-auto flex h-24 w-full max-w-[1400px] items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-[#ded7cd] bg-white shadow-sm">
+      <div className="mx-auto flex h-[4.5rem] w-full min-w-0 max-w-[1400px] items-center justify-between px-3 sm:h-20 sm:px-6 lg:px-8">
+        <Link href="/" className="flex min-w-0 overflow-hidden items-center gap-2 sm:gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#ded7cd] bg-white shadow-sm sm:h-12 sm:w-12">
             <Image
               src="/favicon.png"
               alt="Until Tomorrow logo"
-              width={34}
-              height={34}
+              width={30}
+              height={30}
               className="h-auto w-auto"
               priority
             />
           </div>
-          <span className="text-[2rem] font-semibold tracking-[-0.02em] text-[#4a3c31] sm:text-[2.2rem]">
+          <span className="truncate text-[1.2rem] font-semibold tracking-[-0.02em] text-[#4a3c31] min-[375px]:text-[1.5rem] sm:text-[1.8rem]">
             Until Tomorrow
           </span>
         </Link>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <nav
+            aria-label="Primary navigation"
+            className="hidden items-center gap-7 lg:flex"
+          >
+            <Link
+              href="/#how-it-works"
+              className="text-sm font-semibold text-[#4a3c31] hover:opacity-65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e7b6a4]"
+            >
+              How It Works
+            </Link>
+            <Link
+              href="/about"
+              className="text-sm font-semibold text-[#4a3c31] hover:opacity-65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e7b6a4]"
+            >
+              About
+            </Link>
+            <Link
+              href="/create"
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#f7c7b6] px-5 text-sm font-bold text-[#4a3c31] hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a3c31]"
+            >
+              Create a Memory
+            </Link>
+          </nav>
           {user ? (
             <div ref={userMenuRef} className="relative">
               <button
@@ -273,7 +302,7 @@ export default function SiteHeader() {
                   setIsUserMenuOpen((current) => !current);
                   setIsOpen(false);
                 }}
-                className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-[#ded7cd] bg-white text-sm font-bold uppercase tracking-[0.08em] text-[#4a3c31] shadow-sm transition hover:bg-[#fffaf2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a3c31]"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#ded7cd] bg-white text-sm font-bold uppercase tracking-[0.08em] text-[#4a3c31] shadow-sm transition hover:bg-[#fffaf2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a3c31] sm:h-12 sm:w-12"
               >
                 {getUserInitials(user)}
               </button>
@@ -302,7 +331,7 @@ export default function SiteHeader() {
             </div>
           ) : null}
 
-          <div ref={menuRef} className="relative">
+          <div ref={menuRef} className="relative lg:hidden">
             <button
               type="button"
               aria-label="Open menu"
@@ -311,7 +340,7 @@ export default function SiteHeader() {
                 setIsOpen((current) => !current);
                 setIsUserMenuOpen(false);
               }}
-              className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] text-[#4a3c31] shadow-md transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a3c31]"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#e7b6a4] bg-[#f7c7b6] text-[#4a3c31] shadow-md transition hover:bg-[#f4bba8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a3c31] sm:h-12 sm:w-12"
             >
               <span className="sr-only">Menu</span>
               <div className="flex flex-col gap-1.5">

@@ -4,6 +4,12 @@ import { createClient } from "@supabase/supabase-js";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const requestedDestination = searchParams.get("next");
+  const allowedDestinations = new Set(["/create/memory", "/create/capsule"]);
+  const destination =
+    requestedDestination && allowedDestinations.has(requestedDestination)
+      ? requestedDestination
+      : "/timeline";
 
   if (!code) {
     return NextResponse.redirect(`${origin}/`);
@@ -25,5 +31,5 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/`);
   }
 
-  return NextResponse.redirect(`${origin}/timeline`);
+  return NextResponse.redirect(new URL(destination, origin));
 }

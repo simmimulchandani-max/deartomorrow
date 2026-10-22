@@ -75,7 +75,7 @@ export default function RootLayout({
         ) : null}
         {/* Shared navigation for consistent branding across pages */}
         <SiteHeader />
-        <div className="flex-1">{children}</div>
+        <div className="min-w-0 flex-1">{children}</div>
         {/* Shared footer for consistent branding across pages */}
         <SiteFooter />
       </body>
