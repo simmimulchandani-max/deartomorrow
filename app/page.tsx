@@ -76,34 +76,34 @@ const polaroids = [
     position: "object-center",
   },
   {
-    src: "/images/homepage/nyc.png",
-    alt: "The New York City skyline beneath a vivid sunset",
-    rotation: "rotate-[2deg]",
-    position: "object-center",
-  },
-  {
     src: "/images/homepage/1.jpg",
     alt: "A father sharing a family meal with two children",
-    rotation: "-rotate-[1deg]",
+    rotation: "rotate-[2deg]",
     position: "object-[center_48%]",
   },
   {
     src: "/images/homepage/2.png",
     alt: "A quiet sunset moment on the beach",
-    rotation: "rotate-[3deg]",
+    rotation: "-rotate-[1deg]",
     position: "object-[center_58%]",
   },
   {
     src: "/images/homepage/3.jpg",
     alt: "Friends celebrating together in colorful traditional clothing",
-    rotation: "-rotate-[2deg]",
+    rotation: "rotate-[3deg]",
     position: "object-[center_48%]",
   },
   {
     src: "/images/homepage/4.png",
     alt: "Friends laughing together over a sunlit meal",
-    rotation: "rotate-[1deg]",
+    rotation: "-rotate-[2deg]",
     position: "object-center",
+  },
+  {
+    src: "/images/homepage/5.jpeg",
+    alt: "A couple smiling together during a family board game",
+    rotation: "rotate-[1deg]",
+    position: "object-[center_25%]",
   },
 ];
 
