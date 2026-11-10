@@ -1,3 +1,4 @@
+import { capsuleSubmissionsOpen } from "@/lib/capsuleDates";
 import {
   createCapsuleMemory,
   getCapsuleByShareSlug,
@@ -6,7 +7,6 @@ import {
   CONTRIBUTOR_NAME_MAX,
   MEMORY_MESSAGE_MAX,
   MEMORY_TITLE_MAX,
-  dateOnly,
   filterTrustedPrivateMediaPaths,
   isSafeIdentifier,
   validateTextLength,
@@ -41,7 +41,7 @@ export async function POST(request: Request, context: RouteContext) {
       return Response.json({ error: "Capsule not found." }, { status: 404 });
     }
 
-    if (capsule.submissionDeadline < dateOnly(new Date())) {
+    if (!capsuleSubmissionsOpen(capsule.submissionDeadline)) {
       return Response.json(
         { error: "This capsule is closed for submissions." },
         { status: 403 }

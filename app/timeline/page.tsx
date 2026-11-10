@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 import { hasDateArrived } from '@/lib/unlockDates';
+import { hasCapsuleUnlocked } from '@/lib/capsuleDates';
 
 type Memory = {
   id: string;
@@ -355,7 +356,7 @@ export default function TimelinePage() {
                 <h2 className="mb-4 text-2xl font-semibold text-[#4a3c31]">Capsules</h2>
                 <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                   {capsules.map((capsule) => {
-                    const ready = isReadyToUnlock(capsule.unlockDate);
+                    const ready = hasCapsuleUnlocked(capsule.unlockDate);
 
                     return (
                       <article key={capsule.id} className="overflow-hidden rounded-2xl bg-gray-100 shadow-sm">
@@ -382,7 +383,7 @@ export default function TimelinePage() {
                             </p>
                           ) : null}
 
-                          <p className="mt-4 text-sm font-medium text-[#4a3c31]">{statusLabel(capsule.unlockDate)}</p>
+                          <p className="mt-4 text-sm font-medium text-[#4a3c31]">{ready ? 'Ready to open' : `Unlocks ${formatDate(capsule.unlockDate)}`}</p>
                           <p className="mt-1 text-xs text-gray-500">
                             Submissions close {formatDate(capsule.submissionDeadline)}
                           </p>

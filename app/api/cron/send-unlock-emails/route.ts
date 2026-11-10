@@ -1,5 +1,5 @@
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { dateOnly } from "@/lib/validation";
+import { capsuleDateOnly, CAPSULE_TIME_ZONE as APP_TIME_ZONE } from "@/lib/capsuleDates";
 import {
   buildCapsuleUnlockEmailTemplate,
   buildGiftCapsuleOwnerConfirmationEmailTemplate,
@@ -59,7 +59,6 @@ type UnlockEmailDiagnostics = {
 const MAX_RECORDS_PER_TYPE = 200;
 const DEFAULT_FROM_EMAIL = "Until Tomorrow <hello@until-tomorrow.com>";
 const CAPSULE_SENT_COLUMN = "capsule_unlock_email_sent_at";
-const APP_TIME_ZONE = "America/New_York";
 const LOGO_PATH = "/favicon.png";
 
 export const runtime = "nodejs";
@@ -145,7 +144,7 @@ async function handleUnlockEmailRequest(request: Request) {
   try {
     const resend = new Resend(resendApiKey);
     const now = new Date();
-    const today = dateInTimeZone(now, APP_TIME_ZONE);
+    const today = capsuleDateOnly(now);
     const logoUrl = new URL(LOGO_PATH, siteUrl).toString();
     let diagnostics: UnlockEmailDiagnostics | null = null;
 
@@ -454,6 +453,7 @@ async function sendCapsuleUnlockEmails(input: {
         supabase: input.supabase,
         table: "capsules",
         id: capsule.id,
+        expectedUnlockDate: capsule.unlock_date,
         runId: input.runId,
       });
       if (!claimed) {
@@ -545,6 +545,7 @@ async function sendCapsuleUnlockEmails(input: {
       const claimed = await claimGiftCapsuleEmailAttempt({
         supabase: input.supabase,
         id: capsule.id,
+        expectedUnlockDate: capsule.unlock_date,
         runId: input.runId,
       });
       if (!claimed) {
@@ -1007,6 +1008,7 @@ async function claimEmailAttempt(input: {
   supabase: ReturnType<typeof getSupabaseAdminClient>;
   table: "memories" | "capsules";
   id: string;
+  expectedUnlockDate?: string;
   runId: string;
 }) {
   const staleCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
@@ -1023,7 +1025,12 @@ async function claimEmailAttempt(input: {
   const { data, error } =
     input.table === "memories"
       ? await query.eq("unlocked_email_sent", false).maybeSingle()
-      : await query.is(CAPSULE_SENT_COLUMN, null).maybeSingle();
+      : await query
+          .is(CAPSULE_SENT_COLUMN, null)
+          .eq("is_gift", false)
+          .eq("unlock_date", input.expectedUnlockDate!)
+          .lte("unlock_date", capsuleDateOnly())
+          .maybeSingle();
 
   if (error) {
     throw new Error(`Failed claiming ${input.table} ${input.id}: ${error.message}`);
@@ -1049,6 +1056,7 @@ async function claimEmailAttempt(input: {
 async function claimGiftCapsuleEmailAttempt(input: {
   supabase: ReturnType<typeof getSupabaseAdminClient>;
   id: string;
+  expectedUnlockDate: string;
   runId: string;
 }) {
   const staleCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
@@ -1060,6 +1068,8 @@ async function claimGiftCapsuleEmailAttempt(input: {
     })
     .eq("id", input.id)
     .eq("is_gift", true)
+    .eq("unlock_date", input.expectedUnlockDate)
+    .lte("unlock_date", capsuleDateOnly())
     .or("recipient_email_sent_at.is.null,owner_gift_confirmation_sent_at.is.null")
     .or(`unlock_email_attempted_at.is.null,unlock_email_attempted_at.lt.${staleCutoff}`)
     .select("id")
@@ -1149,23 +1159,4 @@ function firstImageUrl(memory: MemoryUnlockRow) {
 
 function isVideoUrl(url: string) {
   return /\.(mp4|webm|ogg|mov)$/i.test(url) || url.includes("video");
-}
-
-function dateInTimeZone(value: Date, timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(value);
-
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  const day = parts.find((part) => part.type === "day")?.value;
-
-  if (!year || !month || !day) {
-    return dateOnly(value);
-  }
-
-  return `${year}-${month}-${day}`;
 }

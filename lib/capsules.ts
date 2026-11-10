@@ -2,7 +2,8 @@ import "server-only";
 
 import { getStorageBucketName } from "@/lib/storageBucket";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
-export { dateOnly, hasDateArrived } from "@/lib/unlockDates";
+import { capsuleDateEditBlockedReason, type CapsuleDateEditingFields } from "@/lib/capsuleDateEditing";
+export { capsuleDateOnly, hasCapsuleUnlocked, capsuleSubmissionsOpen } from "@/lib/capsuleDates";
 
 export type CapsuleSummary = {
   id: string;
@@ -17,6 +18,7 @@ export type CapsuleSummary = {
   recipientName: string | null;
   recipientEmail: string | null;
   recipientNote: string | null;
+  dateEditBlockedReason: string | null;
 };
 
 export type CapsuleMemory = {
@@ -30,7 +32,7 @@ export type CapsuleMemory = {
   createdAt: string | null;
 };
 
-type RawCapsule = {
+type RawCapsule = CapsuleDateEditingFields & {
   id: string;
   owner_user_id: string;
   title: string;
@@ -56,9 +58,7 @@ type RawCapsuleMemory = {
   created_at?: string | null;
 };
 
-export function isValidDateString(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
+export { isValidDateString } from "@/lib/validation";
 
 export function normalizeCapsule(row: RawCapsule): CapsuleSummary {
   return {
@@ -74,6 +74,7 @@ export function normalizeCapsule(row: RawCapsule): CapsuleSummary {
     recipientName: row.recipient_name ?? null,
     recipientEmail: row.recipient_email ?? null,
     recipientNote: row.recipient_note ?? null,
+    dateEditBlockedReason: capsuleDateEditBlockedReason(row),
   };
 }
 

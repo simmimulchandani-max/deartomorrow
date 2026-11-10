@@ -4,7 +4,7 @@ import {
   buildCapsuleUnlockPath,
   countCapsuleMemories,
   getCapsuleByShareSlug,
-  hasDateArrived,
+  hasCapsuleUnlocked,
   listCapsuleMemories,
 } from "@/lib/capsules";
 import { getUserFromRequest } from "@/lib/serverAuth";
@@ -56,7 +56,7 @@ export async function GET(
       Boolean(userEmail) &&
       Boolean(user.email_confirmed_at) &&
       recipientEmail === userEmail;
-    const unlocked = hasDateArrived(capsule.unlockDate);
+    const unlocked = hasCapsuleUnlocked(capsule.unlockDate);
 
     if (!isOwner && !isMatchingGiftRecipient) {
       return Response.json(
@@ -103,6 +103,8 @@ export async function GET(
           },
       unlocked,
       viewerIsOwner: isOwner,
+      canEditDates: isOwner && !capsule.dateEditBlockedReason,
+      dateEditBlockedReason: isOwner ? capsule.dateEditBlockedReason : null,
       submissionCount,
       sharePath: buildCapsuleSharePath(capsule.shareSlug),
       unlockPath: buildCapsuleUnlockPath(capsule.shareSlug),

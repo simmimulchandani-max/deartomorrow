@@ -3,7 +3,7 @@ import {
   buildCapsuleSharePath,
   buildCapsuleStatusPath,
   createCapsule,
-  dateOnly,
+  capsuleDateOnly,
   isValidDateString,
   listCapsulesForOwner,
 } from "@/lib/capsules";
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     const recipientName = isGift ? body.recipientName?.trim() || null : null;
     const recipientEmail = isGift ? body.recipientEmail?.trim().toLowerCase() || null : null;
     const recipientNote = isGift ? body.recipientNote?.trim() || null : null;
-    const today = dateOnly(new Date());
+    const today = capsuleDateOnly(new Date());
 
     if (!title) {
       return Response.json({ error: "Capsule title is required." }, { status: 400 });

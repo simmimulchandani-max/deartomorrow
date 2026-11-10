@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getSupabaseClient } from '@/lib/supabaseClient';
+import CapsuleDateEditor from '@/components/CapsuleDateEditor';
 
 type Capsule = {
   shareSlug: string;
@@ -28,6 +29,8 @@ type OwnerPayload = {
   sharePath: string;
   unlockPath: string;
   viewerIsOwner: boolean;
+  canEditDates: boolean;
+  dateEditBlockedReason: string | null;
   memories: CapsuleMemory[];
 };
 
@@ -60,29 +63,24 @@ export default function CapsuleOwnerView({
   const [errorMessage, setErrorMessage] = useState('');
   const [copied, setCopied] = useState(false);
 
+  const fetchCapsule = useCallback(async (): Promise<OwnerPayload> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Please log in to open this capsule.');
+    const response = await fetch(`/api/capsules/${shareSlug}/owner`, {
+      cache: 'no-store',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.error || 'Failed to load capsule.');
+    return data;
+  }, [shareSlug, supabase]);
+
   useEffect(() => {
     let isActive = true;
 
     async function loadCapsule() {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (!session) {
-          throw new Error('Please log in to open this capsule.');
-        }
-
-        const response = await fetch(`/api/capsules/${shareSlug}/owner`, {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data?.error || 'Failed to load capsule.');
-        }
+        const data = await fetchCapsule();
 
         if (isActive) {
           setPayload(data);
@@ -103,7 +101,7 @@ export default function CapsuleOwnerView({
     return () => {
       isActive = false;
     };
-  }, [shareSlug, supabase]);
+  }, [fetchCapsule]);
 
   async function copyShareLink() {
     if (!payload) return;
@@ -237,6 +235,17 @@ export default function CapsuleOwnerView({
             </p>
           </div>
         </div>
+
+        {payload.viewerIsOwner ? (
+          <CapsuleDateEditor
+            shareSlug={capsule.shareSlug}
+            submissionDeadline={capsule.submissionDeadline}
+            unlockDate={capsule.unlockDate}
+            canEdit={payload.canEditDates}
+            blockedReason={payload.dateEditBlockedReason}
+            onSaved={async () => { setPayload(await fetchCapsule()); }}
+          />
+        ) : null}
 
         {!unlocked ? (
           <div className="rounded-[1.75rem] border border-white/70 bg-gray-100 p-8 text-center shadow-sm sm:p-10">

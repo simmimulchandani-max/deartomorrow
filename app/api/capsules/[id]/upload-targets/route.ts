@@ -1,8 +1,9 @@
+import { capsuleSubmissionsOpen } from "@/lib/capsuleDates";
 import { generateId } from "@/lib/generateId";
 import { getCapsuleByShareSlug } from "@/lib/capsules";
 import { getPrivateMediaBucket } from "@/lib/privateMedia";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { dateOnly, isSafeIdentifier, validateMediaFiles } from "@/lib/validation";
+import { isSafeIdentifier, validateMediaFiles } from "@/lib/validation";
 
 type RouteContext = {
   params: Promise<{
@@ -40,7 +41,7 @@ export async function POST(request: Request, context: RouteContext) {
       return Response.json({ error: "Capsule not found." }, { status: 404 });
     }
 
-    if (capsule.submissionDeadline < dateOnly(new Date())) {
+    if (!capsuleSubmissionsOpen(capsule.submissionDeadline)) {
       return Response.json(
         { error: "This capsule is closed for submissions." },
         { status: 403 }
